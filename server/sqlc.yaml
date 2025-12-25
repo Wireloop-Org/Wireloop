@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - schema: "sqlc/schema.sql"     # Where your table definitions live
+    queries: "sqlc/queries.sql"   # Where your SELECT/INSERT queries live
+    engine: "postgresql"
+    gen:
+      go:
+        package: "db"             # The Go package name
+        out: "internal/db"        # Where the code will be generated
+        sql_package: "pgx/v5"     # Use the modern pgx driver
