@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"wireloop/internal/auth"
 	"wireloop/internal/db"
 
@@ -42,5 +43,9 @@ func (h *Handler) HandleGitHubCallback(c *gin.Context) {
 
 	jwtToken, _ := auth.GenerateJWT(user.ID)
 
-	c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/auth/success?token="+jwtToken)
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/success?token="+jwtToken)
 }
