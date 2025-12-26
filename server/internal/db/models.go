@@ -41,10 +41,13 @@ type Rule struct {
 }
 
 type User struct {
-	ID          pgtype.UUID
-	GithubID    int64
-	Username    string
-	AvatarUrl   pgtype.Text
-	AccessToken string
-	CreatedAt   pgtype.Timestamptz
+	ID               pgtype.UUID
+	GithubID         int64
+	Username         string
+	AvatarUrl        pgtype.Text
+	DisplayName      pgtype.Text
+	AccessToken      string
+	ProfileCompleted pgtype.Bool
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }

@@ -9,7 +9,9 @@ import (
 
 	"wireloop/internal/api"
 	"wireloop/internal/db"
+	"wireloop/internal/middleware"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -54,6 +56,22 @@ func main() {
 
 	r := gin.Default()
 
+	// CORS configuration
+	frontendURL := os.Getenv("FRONTEND_URL")
+	allowedOrigins := []string{"http://localhost:3000"}
+	if frontendURL != "" {
+		allowedOrigins = append(allowedOrigins, frontendURL)
+	}
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
@@ -64,14 +82,27 @@ func main() {
 
 	r.GET("/api/test-db", app.testDBHandler)
 
-	authHandler := &api.Handler{Queries: queries}
-	r.GET("/api/auth/callback", authHandler.HandleGitHubCallback)
+	handler := &api.Handler{Queries: queries}
 
+	// Auth routes (public)
+	r.GET("/api/auth/callback", handler.HandleGitHubCallback)
 	r.GET("/api/auth/github", func(c *gin.Context) {
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		redirectURL := "https://github.com/login/oauth/authorize?client_id=" + clientID + "&scope=user:email"
 		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 	})
+
+	// Public profile route
+	r.GET("/api/users/:username", handler.GetPublicProfile)
+
+	// Protected routes (require auth)
+	protected := r.Group("/api")
+	protected.Use(middleware.AuthMiddleware())
+	{
+		protected.GET("/profile", handler.GetProfile)
+		protected.PUT("/profile", handler.UpdateProfile)
+		protected.POST("/profile/avatar", handler.UploadAvatar)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -1,11 +1,14 @@
--- 1. Users Table (GitHub Identity)
+-- 1. Users Table (GitHub Identity + Profile)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     github_id BIGINT UNIQUE NOT NULL,
     username TEXT UNIQUE NOT NULL,
-    avatar_url TEXT,
-    access_token TEXT NOT NULL, 
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    avatar_url TEXT,                          -- Avatar (GitHub or custom uploaded)
+    display_name TEXT,                        -- Custom display name
+    access_token TEXT NOT NULL,
+    profile_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. Projects Table (Repo + Channel)

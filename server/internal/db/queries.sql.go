@@ -11,8 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getPublicProfile = `-- name: GetPublicProfile :one
+SELECT 
+    id,
+    username,
+    avatar_url,
+    display_name,
+    created_at
+FROM users WHERE username = $1 LIMIT 1
+`
+
+type GetPublicProfileRow struct {
+	ID          pgtype.UUID
+	Username    string
+	AvatarUrl   pgtype.Text
+	DisplayName pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetPublicProfile(ctx context.Context, username string) (GetPublicProfileRow, error) {
+	row := q.db.QueryRow(ctx, getPublicProfile, username)
+	var i GetPublicProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getUserByGithubID = `-- name: GetUserByGithubID :one
-SELECT id, github_id, username, avatar_url, access_token, created_at FROM users WHERE github_id = $1 LIMIT 1
+SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE github_id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByGithubID(ctx context.Context, githubID int64) (User, error) {
@@ -23,8 +54,151 @@ func (q *Queries) GetUserByGithubID(ctx context.Context, githubID int64) (User, 
 		&i.GithubID,
 		&i.Username,
 		&i.AvatarUrl,
+		&i.DisplayName,
 		&i.AccessToken,
+		&i.ProfileCompleted,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.AccessToken,
+		&i.ProfileCompleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE username = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.AccessToken,
+		&i.ProfileCompleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserProfile = `-- name: GetUserProfile :one
+SELECT 
+    id,
+    github_id,
+    username,
+    avatar_url,
+    display_name,
+    profile_completed,
+    created_at
+FROM users WHERE id = $1 LIMIT 1
+`
+
+type GetUserProfileRow struct {
+	ID               pgtype.UUID
+	GithubID         int64
+	Username         string
+	AvatarUrl        pgtype.Text
+	DisplayName      pgtype.Text
+	ProfileCompleted pgtype.Bool
+	CreatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserProfile(ctx context.Context, id pgtype.UUID) (GetUserProfileRow, error) {
+	row := q.db.QueryRow(ctx, getUserProfile, id)
+	var i GetUserProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.ProfileCompleted,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :one
+UPDATE users SET
+    avatar_url = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
+`
+
+type UpdateUserAvatarParams struct {
+	ID        pgtype.UUID
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserAvatar, arg.ID, arg.AvatarUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.AccessToken,
+		&i.ProfileCompleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users SET
+    display_name = COALESCE($2, display_name),
+    profile_completed = TRUE,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
+`
+
+type UpdateUserProfileParams struct {
+	ID          pgtype.UUID
+	DisplayName pgtype.Text
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile, arg.ID, arg.DisplayName)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.GithubID,
+		&i.Username,
+		&i.AvatarUrl,
+		&i.DisplayName,
+		&i.AccessToken,
+		&i.ProfileCompleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -37,9 +211,10 @@ INSERT INTO users (
 )
 ON CONFLICT (github_id) DO UPDATE SET
     username = EXCLUDED.username,
-    avatar_url = EXCLUDED.avatar_url,
-    access_token = EXCLUDED.access_token
-RETURNING id, github_id, username, avatar_url, access_token, created_at
+    avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
+    access_token = EXCLUDED.access_token,
+    updated_at = NOW()
+RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
 `
 
 type UpsertUserParams struct {
@@ -62,8 +237,11 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, e
 		&i.GithubID,
 		&i.Username,
 		&i.AvatarUrl,
+		&i.DisplayName,
 		&i.AccessToken,
+		&i.ProfileCompleted,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

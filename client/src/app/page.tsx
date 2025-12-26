@@ -1,17 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { api, getToken, clearToken, Profile } from "@/lib/api";
 
 export default function Home() {
-  const [isLoggedIn] = useState(() => {
-    if (typeof window !== "undefined") {
-      return !!localStorage.getItem("wireloop_token");
-    }
-    return false;
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  if (isLoggedIn) {
-    return <Dashboard />;
+  const loadProfile = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await api.getProfile();
+      setProfile(data);
+      setIsLoggedIn(true);
+      
+      // Redirect to setup if profile not completed
+      if (!data.profile_completed) {
+        router.push("/setup");
+      }
+    } catch {
+      clearToken();
+      setIsLoggedIn(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0c0c0f]">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isLoggedIn && profile) {
+    return <Dashboard profile={profile} />;
   }
 
   return <LoginPage />;
@@ -27,13 +64,13 @@ function LoginPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background gradient mesh */}
       <div className="absolute inset-0 bg-gradient-mesh" />
-      
+
       {/* Grid pattern overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage: `linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
+          backgroundSize: "60px 60px",
         }}
       />
 
@@ -42,17 +79,17 @@ function LoginPage() {
         {/* Logo / Brand */}
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-            <svg 
-              className="w-8 h-8 text-white" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M13 10V3L4 14h7v7l9-11h-7z" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
           </div>
@@ -80,7 +117,8 @@ function LoginPage() {
 
           <div className="mt-6 pt-6 border-t border-zinc-800">
             <p className="text-xs text-zinc-500 text-center">
-              By continuing, you agree to our Terms of Service and Privacy Policy
+              By continuing, you agree to our Terms of Service and Privacy
+              Policy
             </p>
           </div>
         </div>
@@ -88,20 +126,50 @@ function LoginPage() {
         {/* Features */}
         <div className="flex gap-8 text-sm text-zinc-500">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 text-emerald-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Real-time sync
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 text-emerald-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Team collaboration
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-4 h-4 text-emerald-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             GitHub integration
           </div>
@@ -111,58 +179,91 @@ function LoginPage() {
   );
 }
 
-function Dashboard() {
+function Dashboard({ profile }: { profile: Profile }) {
+  const router = useRouter();
+
   const handleLogout = () => {
-    localStorage.removeItem("wireloop_token");
+    clearToken();
     window.location.reload();
   };
 
+  const displayName = profile.display_name || profile.username;
+  const avatarUrl = profile.avatar_url;
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0c0c0f]">
       {/* Header */}
       <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <svg 
-                className="w-4 h-4 text-white" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M13 10V3L4 14h7v7l9-11h-7z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
                 />
               </svg>
             </div>
             <span className="font-semibold">Wireloop</span>
           </div>
-          
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Sign out
-          </button>
+
+          {/* User Menu */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 relative">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={displayName}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm text-zinc-500">
+                    {displayName[0]?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm text-zinc-300">{displayName}</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-          <p className="text-zinc-500">Here is what is happening with your projects</p>
+          <h1 className="text-3xl font-bold mb-2">
+            Welcome back, {displayName}!
+          </h1>
+          <p className="text-zinc-500">
+            Here is what is happening with your projects
+          </p>
         </div>
 
         {/* Stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { label: "Active Projects", value: "0", icon: "📁" },
-            { label: "Team Members", value: "1", icon: "👥" },
-            { label: "Commits Today", value: "0", icon: "⚡" },
+            { label: "Active Loops", value: "0", icon: "💬" },
+            { label: "Contributions", value: "0", icon: "⚡" },
+            { label: "Repositories", value: "0", icon: "📁" },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -175,13 +276,37 @@ function Dashboard() {
           ))}
         </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+            <h3 className="font-semibold text-lg mb-2">Join a Loop</h3>
+            <p className="text-zinc-400 text-sm mb-4">
+              Search for repositories and join their exclusive chat loops
+            </p>
+            <button className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium transition-colors">
+              Browse Loops
+            </button>
+          </div>
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+            <h3 className="font-semibold text-lg mb-2">Create a Loop</h3>
+            <p className="text-zinc-400 text-sm mb-4">
+              Set up a merit-based chat for your repository
+            </p>
+            <button className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition-colors">
+              Create Loop
+            </button>
+          </div>
+        </div>
+
         {/* Empty state */}
         <div className="text-center py-16 rounded-2xl border border-dashed border-zinc-800">
           <div className="text-4xl mb-4">🚀</div>
-          <h3 className="text-xl font-semibold mb-2">No projects yet</h3>
-          <p className="text-zinc-500 mb-6">Create your first project to get started</p>
+          <h3 className="text-xl font-semibold mb-2">No loops yet</h3>
+          <p className="text-zinc-500 mb-6">
+            Join or create a loop to start collaborating
+          </p>
           <button className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors">
-            Create Project
+            Explore Repositories
           </button>
         </div>
       </main>
