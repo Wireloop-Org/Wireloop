@@ -47,7 +47,7 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.Queries.GetUserProfile(c, pgtype.UUID{Bytes: userID, Valid: true})
+	profile, err := h.Queries.GetUserProfile(c, userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Profile not found"})
 		return
@@ -84,7 +84,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	user, err := h.Queries.UpdateUserProfile(c, db.UpdateUserProfileParams{
-		ID:          pgtype.UUID{Bytes: userID, Valid: true},
+		ID:          userID,
 		DisplayName: toPgText(req.DisplayName),
 	})
 	if err != nil {
@@ -142,7 +142,7 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", base64.StdEncoding.EncodeToString(processedData))
 
 	user, err := h.Queries.UpdateUserAvatar(c, db.UpdateUserAvatarParams{
-		ID:        pgtype.UUID{Bytes: userID, Valid: true},
+		ID:        userID,
 		AvatarUrl: pgtype.Text{String: dataURL, Valid: true},
 	})
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Claims represents the JWT claims structure
@@ -69,29 +70,29 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Convert to [16]byte for UUID
-		var userID [16]byte
+		// Convert to pgtype.UUID
+		var userIDBytes16 [16]byte
 		for i, v := range userIDBytes {
 			if i >= 16 {
 				break
 			}
 			if num, ok := v.(float64); ok {
-				userID[i] = byte(num)
+				userIDBytes16[i] = byte(num)
 			}
 		}
 
-		c.Set("user_id", userID)
+		c.Set("user_id", pgtype.UUID{Bytes: userIDBytes16, Valid: true})
 		c.Next()
 	}
 }
 
-// GetUserID extracts the user ID from context
-func GetUserID(c *gin.Context) ([16]byte, bool) {
+// GetUserID extracts the user ID from context as pgtype.UUID
+func GetUserID(c *gin.Context) (pgtype.UUID, bool) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		return [16]byte{}, false
+		return pgtype.UUID{}, false
 	}
-	id, ok := userID.([16]byte)
+	id, ok := userID.(pgtype.UUID)
 	return id, ok
 }
 

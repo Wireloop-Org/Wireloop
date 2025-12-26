@@ -1,6 +1,9 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strconv"
 	"wireloop/internal/db"
 	"wireloop/internal/types"
@@ -24,15 +27,15 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
         return
     }
 
-    v, ok := c.Get("user_id")
+    userID, ok := c.Get("user_id")
     if !ok {
         c.JSON(401, gin.H{"error": "unauthorized"})
         return
     }
-    userID := v.(pgtype.UUID)
+    uid := userID.(pgtype.UUID)
 
     if _, err := h.Queries.GetProjectByOwnerAndName(c, db.GetProjectByOwnerAndNameParams{
-        OwnerID: userID,
+        OwnerID: uid,
         Name:    req.ChannelName,
     }); err == nil {
         c.JSON(409, gin.H{"error": "project already exists"})
@@ -43,7 +46,7 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
         GithubRepoID: req.GithubRepoId,
         FullName:     req.ChannelName,
         Name:         req.ChannelName,
-        OwnerID:      userID,
+        OwnerID:      uid,
     })
     if err != nil {
         c.JSON(500, gin.H{"error": "failed to create project"})
@@ -63,7 +66,7 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
     }
 
     _ = h.Queries.AddMembership(c, db.AddMembershipParams{
-        UserID:    userID,
+        UserID:    uid,
         ProjectID: project.ID,
         Role:      pgtype.Text{String: "owner", Valid: true},
     })
@@ -77,14 +80,14 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
 
 
 func (h *Handler) HandlelistProjects(c *gin.Context) {
-    v, ok := c.Get("user_id")
+    userID, ok := c.Get("user_id")
     if !ok {
         c.JSON(401, gin.H{"error": "unauthorized"})
         return
     }
-    userID := v.(pgtype.UUID)
+    uid := userID.(pgtype.UUID)
 
-    projects, err := h.Queries.GetProjectsByOwner(c, userID)
+    projects, err := h.Queries.GetProjectsByOwner(c, uid)
     if err != nil {
         c.JSON(500, gin.H{"error": "failed to fetch projects"})
         return
@@ -93,4 +96,71 @@ func (h *Handler) HandlelistProjects(c *gin.Context) {
     c.JSON(200, gin.H{
         "projects": projects,
     })
+}
+
+// GitHubRepo represents a GitHub repository
+type GitHubRepo struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	FullName    string `json:"full_name"`
+	Description string `json:"description"`
+	Private     bool   `json:"private"`
+	HTMLURL     string `json:"html_url"`
+	Language    string `json:"language"`
+	StarCount   int    `json:"stargazers_count"`
+	ForksCount  int    `json:"forks_count"`
+	Owner       struct {
+		Login     string `json:"login"`
+		AvatarURL string `json:"avatar_url"`
+	} `json:"owner"`
+}
+
+// HandleGetGitHubRepos fetches the user's GitHub repositories
+func (h *Handler) HandleGetGitHubRepos(c *gin.Context) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+	uid := userID.(pgtype.UUID)
+
+	// Get user's access token from DB
+	user, err := h.Queries.GetUserByID(c, uid)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get user"})
+		return
+	}
+
+	// Fetch repos from GitHub API
+	req, err := http.NewRequest("GET", "https://api.github.com/user/repos?sort=updated&per_page=100", nil)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to create request"})
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+user.AccessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to fetch repos from GitHub"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("GitHub API error: %d", resp.StatusCode)})
+		return
+	}
+
+	var repos []GitHubRepo
+	if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
+		c.JSON(500, gin.H{"error": "failed to parse GitHub response"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"repos": repos,
+	})
 }
