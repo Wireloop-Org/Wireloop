@@ -66,19 +66,55 @@ export interface UpdateProfileData {
   display_name?: string;
 }
 
+// GitHub Repo types
+export interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  html_url: string;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+// Project/Loop types
+export interface Project {
+  ID: { Bytes: string; Valid: boolean };
+  GithubRepoID: number;
+  FullName: string;
+  Name: string;
+  OwnerID: { Bytes: string; Valid: boolean };
+  CreatedAt: { Time: string; Valid: boolean };
+}
+
+export interface Rule {
+  criteria_type: string;
+  threshold: number;
+}
+
+export interface CreateLoopData {
+  repo_id: number;
+  name: string;
+  rules: Rule[];
+}
+
 // API functions
 export const api = {
-  // Get current user profile
+  // Profile
   getProfile: () => apiRequest<Profile>("/api/profile"),
 
-  // Update profile
   updateProfile: (data: UpdateProfileData) =>
     apiRequest<Profile>("/api/profile", {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
-  // Upload avatar
   uploadAvatar: async (file: File): Promise<{ avatar_url: string }> => {
     const token = getToken();
     const formData = new FormData();
@@ -102,7 +138,19 @@ export const api = {
     return response.json();
   },
 
-  // Get public profile
   getPublicProfile: (username: string) =>
     apiRequest<Omit<Profile, "profile_completed">>(`/api/users/${username}`),
+
+  // GitHub Repos
+  getGitHubRepos: () =>
+    apiRequest<{ repos: GitHubRepo[] }>("/api/github/repos"),
+
+  // Loops/Projects
+  getProjects: () => apiRequest<{ projects: Project[] }>("/api/projects"),
+
+  createLoop: (data: CreateLoopData) =>
+    apiRequest<{ id: string; name: string }>("/api/channel", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };

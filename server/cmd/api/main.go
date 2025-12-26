@@ -101,8 +101,9 @@ func main() {
 		protected.GET("/profile", Handler.GetProfile)
 		protected.PUT("/profile", Handler.UpdateProfile)
 		protected.POST("/profile/avatar", Handler.UploadAvatar)
-		protected.POST("/channel",Handler.HandleMakeChannel)
-		protected.GET("/listprojects", Handler.HandlelistProjects)
+		protected.POST("/channel", Handler.HandleMakeChannel)
+		protected.GET("/projects", Handler.HandlelistProjects)
+		protected.GET("/github/repos", Handler.HandleGetGitHubRepos)
 	}
 
 

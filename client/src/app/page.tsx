@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, getToken, clearToken, Profile } from "@/lib/api";
+import { api, getToken, clearToken, Profile, Project } from "@/lib/api";
+import CreateLoopModal from "@/components/CreateLoopModal";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -22,8 +23,7 @@ export default function Home() {
       const data = await api.getProfile();
       setProfile(data);
       setIsLoggedIn(true);
-      
-      // Redirect to setup if profile not completed
+
       if (!data.profile_completed) {
         router.push("/setup");
       }
@@ -181,10 +181,32 @@ function LoginPage() {
 
 function Dashboard({ profile }: { profile: Profile }) {
   const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const data = await api.getProjects();
+      setProjects(data.projects || []);
+    } catch (err) {
+      console.error("Failed to load projects:", err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const handleLogout = () => {
     clearToken();
     window.location.reload();
+  };
+
+  const handleLoopCreated = () => {
+    loadProjects();
   };
 
   const displayName = profile.display_name || profile.username;
@@ -260,56 +282,112 @@ function Dashboard({ profile }: { profile: Profile }) {
 
         {/* Stats cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {[
-            { label: "Active Loops", value: "0", icon: "💬" },
-            { label: "Contributions", value: "0", icon: "⚡" },
-            { label: "Repositories", value: "0", icon: "📁" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800"
-            >
-              <div className="text-2xl mb-2">{stat.icon}</div>
-              <div className="text-3xl font-bold mb-1">{stat.value}</div>
-              <div className="text-sm text-zinc-500">{stat.label}</div>
+          <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
+            <div className="text-2xl mb-2">💬</div>
+            <div className="text-3xl font-bold mb-1">
+              {loadingProjects ? "..." : projects.length}
             </div>
-          ))}
+            <div className="text-sm text-zinc-500">Active Loops</div>
+          </div>
+          <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
+            <div className="text-2xl mb-2">⚡</div>
+            <div className="text-3xl font-bold mb-1">0</div>
+            <div className="text-sm text-zinc-500">Contributions</div>
+          </div>
+          <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
+            <div className="text-2xl mb-2">📁</div>
+            <div className="text-3xl font-bold mb-1">0</div>
+            <div className="text-sm text-zinc-500">Repositories</div>
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
-            <h3 className="font-semibold text-lg mb-2">Join a Loop</h3>
-            <p className="text-zinc-400 text-sm mb-4">
-              Search for repositories and join their exclusive chat loops
-            </p>
-            <button className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium transition-colors">
-              Browse Loops
-            </button>
-          </div>
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
             <h3 className="font-semibold text-lg mb-2">Create a Loop</h3>
             <p className="text-zinc-400 text-sm mb-4">
               Set up a merit-based chat for your repository
             </p>
-            <button className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition-colors">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium transition-colors"
+            >
               Create Loop
+            </button>
+          </div>
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+            <h3 className="font-semibold text-lg mb-2">Browse Loops</h3>
+            <p className="text-zinc-400 text-sm mb-4">
+              Search for repositories and join their exclusive chat loops
+            </p>
+            <button
+              onClick={() => router.push("/loops")}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-medium transition-colors"
+            >
+              Browse Loops
             </button>
           </div>
         </div>
 
-        {/* Empty state */}
-        <div className="text-center py-16 rounded-2xl border border-dashed border-zinc-800">
-          <div className="text-4xl mb-4">🚀</div>
-          <h3 className="text-xl font-semibold mb-2">No loops yet</h3>
-          <p className="text-zinc-500 mb-6">
-            Join or create a loop to start collaborating
-          </p>
-          <button className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors">
-            Explore Repositories
-          </button>
+        {/* Your Loops */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Your Loops</h2>
+          {loadingProjects ? (
+            <div className="flex justify-center py-12">
+              <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((project) => (
+                <button
+                  key={project.ID?.Bytes || project.GithubRepoID}
+                  onClick={() => router.push(`/loops/${project.Name}`)}
+                  className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center text-lg">
+                      💬
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate">{project.Name}</h3>
+                      <p className="text-xs text-zinc-500 truncate">
+                        {project.FullName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-zinc-500">
+                    <span>Owner</span>
+                    <span className="text-indigo-400 group-hover:text-indigo-300">
+                      Open →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 rounded-2xl border border-dashed border-zinc-800">
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-semibold mb-2">No loops yet</h3>
+              <p className="text-zinc-500 mb-6">
+                Create your first loop to start collaborating
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors"
+              >
+                Create Your First Loop
+              </button>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Create Loop Modal */}
+      <CreateLoopModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleLoopCreated}
+      />
     </div>
   );
 }
