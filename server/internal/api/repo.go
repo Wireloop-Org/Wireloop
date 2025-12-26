@@ -31,13 +31,12 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
     }
     userID := v.(pgtype.UUID)
 
-    if projects, err := h.Queries.GetProjectsByOwner(c, userID); err == nil {
-   		for _ ,project := range projects{
-     		if project.Name == req.ChannelName{
-       			c.JSON(409, gin.H{"error": "project already exists"})
-          		return
-       		}
-     	}
+    if _, err := h.Queries.GetProjectByOwnerAndName(c, db.GetProjectByOwnerAndNameParams{
+        OwnerID: userID,
+        Name:    req.ChannelName,
+    }); err == nil {
+        c.JSON(409, gin.H{"error": "project already exists"})
+        return
     }
 
     project, err := h.Queries.CreateProject(c, db.CreateProjectParams{
@@ -76,19 +75,22 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
 }
 
 
-func (h *Handler) HandlelistProjects(c *gin.Context){
-	v, ok := c.Get("user_id")
+
+func (h *Handler) HandlelistProjects(c *gin.Context) {
+    v, ok := c.Get("user_id")
     if !ok {
         c.JSON(401, gin.H{"error": "unauthorized"})
         return
     }
     userID := v.(pgtype.UUID)
-	projects, err := h.Queries.GetProjectsByOwner(c,userID)
-	if err==nil{
-		c.JSON(500, gin.H{"error": "failed to fetch projects"})
-            return
-	}
-	c.JSON(201, gin.H{
-		"projects": projects,
-	})
+
+    projects, err := h.Queries.GetProjectsByOwner(c, userID)
+    if err != nil {
+        c.JSON(500, gin.H{"error": "failed to fetch projects"})
+        return
+    }
+
+    c.JSON(200, gin.H{
+        "projects": projects,
+    })
 }

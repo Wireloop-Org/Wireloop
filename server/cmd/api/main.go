@@ -83,10 +83,8 @@ func main() {
 	r.GET("/api/test-db", app.testDBHandler)
 
 	Handler := &api.Handler{Queries: queries}
-	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
-
 	// Auth routes (public)
-	r.GET("/api/auth/callback", handler.HandleGitHubCallback)
+	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
 	r.GET("/api/auth/github", func(c *gin.Context) {
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		redirectURL := "https://github.com/login/oauth/authorize?client_id=" + clientID + "&scope=user:email"
@@ -94,15 +92,15 @@ func main() {
 	})
 
 	// Public profile route
-	r.GET("/api/users/:username", handler.GetPublicProfile)
+	r.GET("/api/users/:username", Handler.GetPublicProfile)
 
 	// Protected routes (require auth)
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 	{
-		protected.GET("/profile", handler.GetProfile)
-		protected.PUT("/profile", handler.UpdateProfile)
-		protected.POST("/profile/avatar", handler.UploadAvatar)
+		protected.GET("/profile", Handler.GetProfile)
+		protected.PUT("/profile", Handler.UpdateProfile)
+		protected.POST("/profile/avatar", Handler.UploadAvatar)
 		protected.POST("/channel",Handler.HandleMakeChannel)
 		protected.GET("/listprojects", Handler.HandlelistProjects)
 	}
