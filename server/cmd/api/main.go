@@ -82,7 +82,8 @@ func main() {
 
 	r.GET("/api/test-db", app.testDBHandler)
 
-	handler := &api.Handler{Queries: queries}
+	Handler := &api.Handler{Queries: queries}
+	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
 
 	// Auth routes (public)
 	r.GET("/api/auth/callback", handler.HandleGitHubCallback)
@@ -102,7 +103,10 @@ func main() {
 		protected.GET("/profile", handler.GetProfile)
 		protected.PUT("/profile", handler.UpdateProfile)
 		protected.POST("/profile/avatar", handler.UploadAvatar)
+		protected.POST("/channel",Handler.HandleMakeChannel)
+		protected.GET("/listprojects", Handler.HandlelistProjects)
 	}
+
 
 	port := os.Getenv("PORT")
 	if port == "" {

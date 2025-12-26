@@ -42,6 +42,37 @@ func (q *Queries) GetPublicProfile(ctx context.Context, username string) (GetPub
 	return i, err
 }
 
+const getProjectsByOwner = `-- name: GetProjectsByOwner :many
+SELECT id, github_repo_id, full_name, name, owner_id, created_at FROM projects WHERE owner_id = $1
+`
+
+func (q *Queries) GetProjectsByOwner(ctx context.Context, ownerID pgtype.UUID) ([]Project, error) {
+	rows, err := q.db.Query(ctx, getProjectsByOwner, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.GithubRepoID,
+			&i.FullName,
+			&i.Name,
+			&i.OwnerID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByGithubID = `-- name: GetUserByGithubID :one
 SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE github_id = $1 LIMIT 1
 `

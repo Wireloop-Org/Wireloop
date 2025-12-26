@@ -54,3 +54,19 @@ SELECT
     display_name,
     created_at
 FROM users WHERE username = $1 LIMIT 1;
+-- name: GetProjectsByOwner :many
+SELECT * FROM projects WHERE owner_id = $1;
+
+-- name: CreateProject :one
+INSERT INTO projects (github_repo_id, full_name, name, owner_id)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: CreateRule :one
+INSERT INTO rules (project_id, criteria_type, threshold)
+VALUES ($1, $2, $3)
+RETURNING *;
+
+-- name: AddMembership :exec
+INSERT INTO memberships (user_id, project_id, role)
+VALUES ($1, $2, $3);
