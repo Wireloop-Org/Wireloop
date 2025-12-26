@@ -26,7 +26,7 @@ CREATE TABLE rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     criteria_type TEXT NOT NULL, -- 'PR_COUNT', 'STAR_COUNT'
-    required_value TEXT NOT NULL, 
+    threshold TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -34,7 +34,7 @@ CREATE TABLE rules (
 CREATE TABLE memberships (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-    role TEXT DEFAULT 'contributor', 
+    role TEXT DEFAULT 'contributor',
     joined_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (user_id, project_id)
 );

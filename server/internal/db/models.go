@@ -33,11 +33,11 @@ type Project struct {
 }
 
 type Rule struct {
-	ID            pgtype.UUID
-	ProjectID     pgtype.UUID
-	CriteriaType  string
-	RequiredValue string
-	CreatedAt     pgtype.Timestamptz
+	ID           pgtype.UUID
+	ProjectID    pgtype.UUID
+	CriteriaType string
+	Threshold    string
+	CreatedAt    pgtype.Timestamptz
 }
 
 type User struct {

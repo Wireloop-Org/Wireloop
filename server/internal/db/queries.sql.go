@@ -11,8 +11,140 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addMembership = `-- name: AddMembership :exec
+INSERT INTO memberships (user_id, project_id, role)
+VALUES ($1, $2, $3)
+`
+
+type AddMembershipParams struct {
+	UserID    pgtype.UUID
+	ProjectID pgtype.UUID
+	Role      pgtype.Text
+}
+
+func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) error {
+	_, err := q.db.Exec(ctx, addMembership, arg.UserID, arg.ProjectID, arg.Role)
+	return err
+}
+
+const createProject = `-- name: CreateProject :one
+INSERT INTO projects (github_repo_id, full_name, name, owner_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id, github_repo_id, full_name, name, owner_id, created_at
+`
+
+type CreateProjectParams struct {
+	GithubRepoID int64
+	FullName     string
+	Name         string
+	OwnerID      pgtype.UUID
+}
+
+func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
+	row := q.db.QueryRow(ctx, createProject,
+		arg.GithubRepoID,
+		arg.FullName,
+		arg.Name,
+		arg.OwnerID,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.GithubRepoID,
+		&i.FullName,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createRule = `-- name: CreateRule :one
+INSERT INTO rules (project_id, criteria_type, threshold)
+VALUES ($1, $2, $3)
+RETURNING id, project_id, criteria_type, threshold, created_at
+`
+
+type CreateRuleParams struct {
+	ProjectID    pgtype.UUID
+	CriteriaType string
+	Threshold    string
+}
+
+func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, error) {
+	row := q.db.QueryRow(ctx, createRule, arg.ProjectID, arg.CriteriaType, arg.Threshold)
+	var i Rule
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.CriteriaType,
+		&i.Threshold,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getProjectByOwnerAndName = `-- name: GetProjectByOwnerAndName :one
+SELECT id, github_repo_id, full_name, name, owner_id, created_at FROM projects
+WHERE owner_id = $1 AND name = $2
+LIMIT 1
+`
+
+type GetProjectByOwnerAndNameParams struct {
+	OwnerID pgtype.UUID
+	Name    string
+}
+
+func (q *Queries) GetProjectByOwnerAndName(ctx context.Context, arg GetProjectByOwnerAndNameParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByOwnerAndName, arg.OwnerID, arg.Name)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.GithubRepoID,
+		&i.FullName,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getProjectsByOwner = `-- name: GetProjectsByOwner :many
+SELECT id, github_repo_id, full_name, name, owner_id, created_at
+FROM projects
+WHERE owner_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetProjectsByOwner(ctx context.Context, ownerID pgtype.UUID) ([]Project, error) {
+	rows, err := q.db.Query(ctx, getProjectsByOwner, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.GithubRepoID,
+			&i.FullName,
+			&i.Name,
+			&i.OwnerID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPublicProfile = `-- name: GetPublicProfile :one
-SELECT 
+SELECT
     id,
     username,
     avatar_url,
@@ -106,7 +238,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const getUserProfile = `-- name: GetUserProfile :one
-SELECT 
+SELECT
     id,
     github_id,
     username,
