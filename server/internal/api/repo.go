@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"wireloop/internal/db"
 	"wireloop/internal/types"
 
@@ -12,89 +15,116 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-
-type MakeChannelRequest struct{
-	GithubRepoId int64 `json:"repo_id"`
-	ChannelName string `json:"name"`
-	Rules []types.Rule `json:"rules"`
+type MakeChannelRequest struct {
+	GithubRepoId int64        `json:"repo_id"`
+	ChannelName  string       `json:"name"`
+	Rules        []types.Rule `json:"rules"`
 }
 
-// the repo is already present at this point so no need to check whether the repo is present or not
+// HandleMakeChannel creates a new project/loop for a GitHub repository
 func (h *Handler) HandleMakeChannel(c *gin.Context) {
-    var req MakeChannelRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(400, gin.H{"error": err.Error()})
-        return
-    }
+	var req MakeChannelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
 
-    userID, ok := c.Get("user_id")
-    if !ok {
-        c.JSON(401, gin.H{"error": "unauthorized"})
-        return
-    }
-    uid := userID.(pgtype.UUID)
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+	uid := userID.(pgtype.UUID)
 
-    if _, err := h.Queries.GetProjectByOwnerAndName(c, db.GetProjectByOwnerAndNameParams{
-        OwnerID: uid,
-        Name:    req.ChannelName,
-    }); err == nil {
-        c.JSON(409, gin.H{"error": "project already exists"})
-        return
-    }
+	// Check if project with same name already exists for this user
+	if _, err := h.Queries.GetProjectByOwnerAndName(c, db.GetProjectByOwnerAndNameParams{
+		OwnerID: uid,
+		Name:    req.ChannelName,
+	}); err == nil {
+		c.JSON(409, gin.H{"error": "A loop with this name already exists"})
+		return
+	}
 
-    project, err := h.Queries.CreateProject(c, db.CreateProjectParams{
-        GithubRepoID: req.GithubRepoId,
-        Name:         req.ChannelName,
-        OwnerID:      uid,
-    })
-    if err != nil {
-        c.JSON(500, gin.H{"error": "failed to create project"})
-        return
-    }
+	// Use a transaction to ensure atomicity
+	tx, err := h.Pool.Begin(c)
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	defer tx.Rollback(context.Background())
 
-    for _, r := range req.Rules {
-        _, err := h.Queries.CreateRule(c, db.CreateRuleParams{
-            ProjectID:    project.ID,
-            CriteriaType: r.CriteriaType,
-            Threshold:    strconv.Itoa(r.Threshold),
-        })
-        if err != nil {
-            c.JSON(500, gin.H{"error": "failed to create rules"})
-            return
-        }
-    }
+	qtx := h.Queries.WithTx(tx)
 
-    _ = h.Queries.AddMembership(c, db.AddMembershipParams{
-        UserID:    uid,
-        ProjectID: project.ID,
-        Role:      pgtype.Text{String: "owner", Valid: true},
-    })
+	project, err := qtx.CreateProject(c, db.CreateProjectParams{
+		GithubRepoID: req.GithubRepoId,
+		Name:         req.ChannelName,
+		OwnerID:      uid,
+	})
+	if err != nil {
+		log.Printf("CreateProject error: %v", err)
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+			c.JSON(409, gin.H{"error": "A loop for this repository already exists"})
+			return
+		}
+		c.JSON(500, gin.H{"error": "failed to create project: " + err.Error()})
+		return
+	}
 
-    c.JSON(201, gin.H{
-        "id":   project.ID,
-        "name": project.Name,
-    })
+	for _, r := range req.Rules {
+		_, err := qtx.CreateRule(c, db.CreateRuleParams{
+			ProjectID:    project.ID,
+			CriteriaType: r.CriteriaType,
+			Threshold:    strconv.Itoa(r.Threshold),
+		})
+		if err != nil {
+			log.Printf("CreateRule error: %v", err)
+			c.JSON(500, gin.H{"error": "failed to create rules: " + err.Error()})
+			return
+		}
+	}
+
+	err = qtx.AddMembership(c, db.AddMembershipParams{
+		UserID:    uid,
+		ProjectID: project.ID,
+		Role:      pgtype.Text{String: "owner", Valid: true},
+	})
+	if err != nil {
+		log.Printf("AddMembership error: %v", err)
+		c.JSON(500, gin.H{"error": "failed to add membership: " + err.Error()})
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(c); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		c.JSON(500, gin.H{"error": "failed to save changes"})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"id":   project.ID,
+		"name": project.Name,
+	})
 }
-
-
 
 func (h *Handler) HandlelistProjects(c *gin.Context) {
-    userID, ok := c.Get("user_id")
-    if !ok {
-        c.JSON(401, gin.H{"error": "unauthorized"})
-        return
-    }
-    uid := userID.(pgtype.UUID)
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+	uid := userID.(pgtype.UUID)
 
-    projects, err := h.Queries.GetProjectsByOwner(c, uid)
-    if err != nil {
-        c.JSON(500, gin.H{"error": "failed to fetch projects"})
-        return
-    }
+	projects, err := h.Queries.GetProjectsByOwner(c, uid)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to fetch projects"})
+		return
+	}
 
-    c.JSON(200, gin.H{
-        "projects": projects,
-    })
+	c.JSON(200, gin.H{
+		"projects": projects,
+	})
 }
 
 // GitHubRepo represents a GitHub repository

@@ -82,7 +82,7 @@ func main() {
 
 	r.GET("/api/test-db", app.testDBHandler)
 
-	Handler := &api.Handler{Queries: queries}
+	Handler := &api.Handler{Queries: queries, Pool: pool}
 	// Auth routes (public)
 	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
 	r.GET("/api/auth/github", func(c *gin.Context) {
