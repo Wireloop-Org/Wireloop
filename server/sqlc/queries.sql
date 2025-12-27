@@ -1,14 +1,14 @@
 -- name: UpsertUser :one
 INSERT INTO users (
-    github_id, username, avatar_url, access_token
-) VALUES (
-    $1, $2, $3, $4
+	github_id, username, avatar_url, access_token
+	) VALUES (
+	$1, $2, $3, $4
 )
 ON CONFLICT (github_id) DO UPDATE SET
-    username = EXCLUDED.username,
-    avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
-    access_token = EXCLUDED.access_token,
-    updated_at = NOW()
+username = EXCLUDED.username,
+avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
+access_token = EXCLUDED.access_token,
+updated_at = NOW()
 RETURNING *;
 
 -- name: GetUserByGithubID :one
@@ -22,37 +22,37 @@ SELECT * FROM users WHERE username = $1 LIMIT 1;
 
 -- name: UpdateUserProfile :one
 UPDATE users SET
-    display_name = COALESCE($2, display_name),
-    profile_completed = TRUE,
-    updated_at = NOW()
+display_name = COALESCE($2, display_name),
+profile_completed = TRUE,
+updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
 -- name: UpdateUserAvatar :one
 UPDATE users SET
-    avatar_url = $2,
-    updated_at = NOW()
+avatar_url = $2,
+updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
 -- name: GetUserProfile :one
 SELECT
-    id,
-    github_id,
-    username,
-    avatar_url,
-    display_name,
-    profile_completed,
-    created_at
+id,
+github_id,
+username,
+avatar_url,
+display_name,
+profile_completed,
+created_at
 FROM users WHERE id = $1 LIMIT 1;
 
 -- name: GetPublicProfile :one
 SELECT
-    id,
-    username,
-    avatar_url,
-    display_name,
-    created_at
+id,
+username,
+avatar_url,
+display_name,
+created_at
 FROM users WHERE username = $1 LIMIT 1;
 
 -- name: GetProjectByOwnerAndName :one
@@ -67,8 +67,8 @@ WHERE owner_id = $1
 ORDER BY created_at DESC;
 
 -- name: CreateProject :one
-INSERT INTO projects (github_repo_id, full_name, name, owner_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO projects (github_repo_id, name, owner_id)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: CreateRule :one
@@ -79,3 +79,17 @@ RETURNING *;
 -- name: AddMembership :exec
 INSERT INTO memberships (user_id, project_id, role)
 VALUES ($1, $2, $3);
+
+-- name: SearchRepos :many 
+SELECT id, name 
+FROM projects
+WHERE name ILIKE sqlc.arg(q) || '%'
+ORDER BY similarity(name, sqlc.arg(q)) DESC
+LIMIT sqlc.arg(n);
+
+-- name: SearchReposFuzzy :many
+SELECT id, name
+FROM projects
+WHERE name % sqlc.arg(q)
+ORDER BY similarity(name, sqlc.arg(q)) DESC
+LIMIT sqlc.arg(n);

@@ -44,7 +44,6 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
 
     project, err := h.Queries.CreateProject(c, db.CreateProjectParams{
         GithubRepoID: req.GithubRepoId,
-        FullName:     req.ChannelName,
         Name:         req.ChannelName,
         OwnerID:      uid,
     })

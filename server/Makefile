@@ -7,11 +7,11 @@ DOCKER_IMAGE := wireloop-api
 # Go commands
 run:
 	@echo "Starting server..."
-	@if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && go run ./cmd/api/main.go
+	@if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && go run ./cmd/hyperloop/main.go
 
 build:
 	@echo "Building binary..."
-	CGO_ENABLED=0 go build -o bin/$(APP_NAME) ./cmd/api/main.go
+	CGO_ENABLED=0 go build -o bin/$(APP_NAME) ./cmd/hyperloop/main.go
 
 clean:
 	@echo "Cleaning..."
