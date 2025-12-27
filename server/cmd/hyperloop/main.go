@@ -87,6 +87,11 @@ func main() {
 	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
 	r.GET("/api/auth/github", func(c *gin.Context) {
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
+		if clientID == "" {
+			log.Println("WARNING: GITHUB_CLIENT_ID is empty!")
+		} else {
+			log.Printf("Using GitHub Client ID: %s...", clientID[:10])
+		}
 		redirectURL := "https://github.com/login/oauth/authorize?client_id=" + clientID + "&scope=user:email"
 		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 	})
