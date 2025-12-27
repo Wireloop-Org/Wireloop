@@ -15,7 +15,7 @@ CREATE TABLE users (
 CREATE TABLE projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     github_repo_id BIGINT UNIQUE NOT NULL,
-    full_name TEXT NOT NULL, -- e.g., 'facebook/react'
+    -- full_name TEXT NOT NULL, -- e.g., 'facebook/react'
     name TEXT NOT NULL,      -- Display name
     owner_id UUID REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -47,3 +47,11 @@ CREATE TABLE messages (
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+
+-- this EXTENSION allows prefix matches and fuzzy search on b-tree indices
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+
+CREATE INDEX IF NOT EXISTS idx_repos_name_trgm
+ON projects USING gin (name gin_trgm_ops);

@@ -104,8 +104,8 @@ func main() {
 		protected.POST("/channel", Handler.HandleMakeChannel)
 		protected.GET("/projects", Handler.HandlelistProjects)
 		protected.GET("/github/repos", Handler.HandleGetGitHubRepos)
+		protected.GET("/search", Handler.HandleSearchQuery)
 	}
-
 
 	port := os.Getenv("PORT")
 	if port == "" {

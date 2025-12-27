@@ -48,8 +48,6 @@ func (h *Handler) HandleGitHubCallback(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/success?token="+jwtToken)
 }
 
-
-
 func AuthMiddleware(secret string) gin.HandlerFunc {
     return func(c *gin.Context) {
         h := c.GetHeader("Authorization")

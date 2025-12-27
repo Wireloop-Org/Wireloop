@@ -26,7 +26,6 @@ type Message struct {
 type Project struct {
 	ID           pgtype.UUID
 	GithubRepoID int64
-	FullName     string
 	Name         string
 	OwnerID      pgtype.UUID
 	CreatedAt    pgtype.Timestamptz

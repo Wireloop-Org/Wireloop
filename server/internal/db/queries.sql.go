@@ -28,30 +28,23 @@ func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) er
 }
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (github_repo_id, full_name, name, owner_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, github_repo_id, full_name, name, owner_id, created_at
+INSERT INTO projects (github_repo_id, name, owner_id)
+VALUES ($1, $2, $3)
+RETURNING id, github_repo_id, name, owner_id, created_at
 `
 
 type CreateProjectParams struct {
 	GithubRepoID int64
-	FullName     string
 	Name         string
 	OwnerID      pgtype.UUID
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
-	row := q.db.QueryRow(ctx, createProject,
-		arg.GithubRepoID,
-		arg.FullName,
-		arg.Name,
-		arg.OwnerID,
-	)
+	row := q.db.QueryRow(ctx, createProject, arg.GithubRepoID, arg.Name, arg.OwnerID)
 	var i Project
 	err := row.Scan(
 		&i.ID,
 		&i.GithubRepoID,
-		&i.FullName,
 		&i.Name,
 		&i.OwnerID,
 		&i.CreatedAt,
@@ -85,7 +78,7 @@ func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, e
 }
 
 const getProjectByOwnerAndName = `-- name: GetProjectByOwnerAndName :one
-SELECT id, github_repo_id, full_name, name, owner_id, created_at FROM projects
+SELECT id, github_repo_id, name, owner_id, created_at FROM projects
 WHERE owner_id = $1 AND name = $2
 LIMIT 1
 `
@@ -101,7 +94,6 @@ func (q *Queries) GetProjectByOwnerAndName(ctx context.Context, arg GetProjectBy
 	err := row.Scan(
 		&i.ID,
 		&i.GithubRepoID,
-		&i.FullName,
 		&i.Name,
 		&i.OwnerID,
 		&i.CreatedAt,
@@ -110,7 +102,7 @@ func (q *Queries) GetProjectByOwnerAndName(ctx context.Context, arg GetProjectBy
 }
 
 const getProjectsByOwner = `-- name: GetProjectsByOwner :many
-SELECT id, github_repo_id, full_name, name, owner_id, created_at
+SELECT id, github_repo_id, name, owner_id, created_at
 FROM projects
 WHERE owner_id = $1
 ORDER BY created_at DESC
@@ -128,7 +120,6 @@ func (q *Queries) GetProjectsByOwner(ctx context.Context, ownerID pgtype.UUID) (
 		if err := rows.Scan(
 			&i.ID,
 			&i.GithubRepoID,
-			&i.FullName,
 			&i.Name,
 			&i.OwnerID,
 			&i.CreatedAt,
@@ -272,6 +263,82 @@ func (q *Queries) GetUserProfile(ctx context.Context, id pgtype.UUID) (GetUserPr
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const searchRepos = `-- name: SearchRepos :many
+SELECT id, name
+FROM projects
+WHERE name ILIKE $1 || '%'
+ORDER BY similarity(name, $1) DESC
+LIMIT $2
+`
+
+type SearchReposParams struct {
+	Q pgtype.Text
+	N int32
+}
+
+type SearchReposRow struct {
+	ID   pgtype.UUID
+	Name string
+}
+
+func (q *Queries) SearchRepos(ctx context.Context, arg SearchReposParams) ([]SearchReposRow, error) {
+	rows, err := q.db.Query(ctx, searchRepos, arg.Q, arg.N)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchReposRow
+	for rows.Next() {
+		var i SearchReposRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchReposFuzzy = `-- name: SearchReposFuzzy :many
+SELECT id, name
+FROM projects
+WHERE name % $1
+ORDER BY similarity(name, $1) DESC
+LIMIT $2
+`
+
+type SearchReposFuzzyParams struct {
+	Q string
+	N int32
+}
+
+type SearchReposFuzzyRow struct {
+	ID   pgtype.UUID
+	Name string
+}
+
+func (q *Queries) SearchReposFuzzy(ctx context.Context, arg SearchReposFuzzyParams) ([]SearchReposFuzzyRow, error) {
+	rows, err := q.db.Query(ctx, searchReposFuzzy, arg.Q, arg.N)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchReposFuzzyRow
+	for rows.Next() {
+		var i SearchReposFuzzyRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateUserAvatar = `-- name: UpdateUserAvatar :one
