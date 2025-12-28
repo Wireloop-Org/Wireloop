@@ -1,8 +1,11 @@
-.PHONY: run build clean docker-build docker-run docker-stop sqlc test help
+.PHONY: run build clean docker-build docker-run docker-stop sqlc test help migrate-up migrate-down migrate-status migrate-create
 
 # App name
 APP_NAME := wireloop
 DOCKER_IMAGE := wireloop-api
+
+# Database URL (loaded from .env)
+DB_URL := $(shell if [ -f ../.env ]; then grep DATABASE_URL ../.env | cut -d '=' -f2-; fi)
 
 # Go commands
 run:
@@ -38,6 +41,27 @@ sqlc:
 	@echo "Generating SQLC code..."
 	sqlc generate
 
+# Migrations (using goose)
+migrate-up:
+	@echo "Running migrations..."
+	@if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && \
+	goose -dir ./migrations postgres "$$DATABASE_URL" up
+
+migrate-down:
+	@echo "Rolling back last migration..."
+	@if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && \
+	goose -dir ./migrations postgres "$$DATABASE_URL" down
+
+migrate-status:
+	@echo "Migration status..."
+	@if [ -f ../.env ]; then set -a && . ../.env && set +a; fi && \
+	goose -dir ./migrations postgres "$$DATABASE_URL" status
+
+migrate-create:
+	@echo "Creating new migration..."
+	@read -p "Migration name: " name && \
+	goose -dir ./migrations create $$name sql
+
 # Testing
 test:
 	@echo "Running tests..."
@@ -55,15 +79,21 @@ tidy:
 # Help
 help:
 	@echo "Available commands:"
-	@echo "  make run          - Run the server locally"
-	@echo "  make build        - Build the binary"
-	@echo "  make clean        - Remove built binary"
-	@echo "  make docker-build - Build Docker image"
-	@echo "  make docker-run   - Run Docker container"
-	@echo "  make docker-stop  - Stop and remove container"
-	@echo "  make docker-logs  - View container logs"
-	@echo "  make sqlc         - Generate SQLC code"
-	@echo "  make test         - Run tests"
-	@echo "  make deps         - Download dependencies"
-	@echo "  make tidy         - Tidy go modules"
+	@echo "  make run            - Run the server locally"
+	@echo "  make build          - Build the binary"
+	@echo "  make clean          - Remove built binary"
+	@echo "  make docker-build   - Build Docker image"
+	@echo "  make docker-run     - Run Docker container"
+	@echo "  make docker-stop    - Stop and remove container"
+	@echo "  make docker-logs    - View container logs"
+	@echo "  make sqlc           - Generate SQLC code"
+	@echo "  make test           - Run tests"
+	@echo "  make deps           - Download dependencies"
+	@echo "  make tidy           - Tidy go modules"
+	@echo ""
+	@echo "Migrations (goose):"
+	@echo "  make migrate-up     - Run all pending migrations"
+	@echo "  make migrate-down   - Rollback last migration"
+	@echo "  make migrate-status - Show migration status"
+	@echo "  make migrate-create - Create new migration file"
 
