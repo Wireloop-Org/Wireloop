@@ -80,8 +80,8 @@ RETURNING *;
 INSERT INTO memberships (user_id, project_id, role)
 VALUES ($1, $2, $3);
 
--- name: SearchRepos :many 
-SELECT id, name 
+-- name: SearchRepos :many
+SELECT id, name
 FROM projects
 WHERE name ILIKE sqlc.arg(q) || '%'
 ORDER BY similarity(name, sqlc.arg(q)) DESC
@@ -93,3 +93,12 @@ FROM projects
 WHERE name % sqlc.arg(q)
 ORDER BY similarity(name, sqlc.arg(q)) DESC
 LIMIT sqlc.arg(n);
+
+-- name: AddMessage :exec
+INSERT INTO messages (id, project_id , sender_id, content)
+VALUES ($1, $2, $3, $4);
+
+
+-- name: IsMember :one
+SELECT 1 FROM memberships
+WHERE user_id = $1 AND project_id = $2 LIMIT 1;

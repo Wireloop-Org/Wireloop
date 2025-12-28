@@ -55,3 +55,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX IF NOT EXISTS idx_repos_name_trgm
 ON projects USING gin (name gin_trgm_ops);
+
+
+CREATE INDEX idx_messages_project_time
+ON messages (project_id, created_at DESC);
