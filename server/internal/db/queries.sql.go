@@ -27,6 +27,28 @@ func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) er
 	return err
 }
 
+const addMessage = `-- name: AddMessage :exec
+INSERT INTO messages (id, project_id , sender_id, content)
+VALUES ($1, $2, $3, $4)
+`
+
+type AddMessageParams struct {
+	ID        int64
+	ProjectID pgtype.UUID
+	SenderID  pgtype.UUID
+	Content   string
+}
+
+func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
+	_, err := q.db.Exec(ctx, addMessage,
+		arg.ID,
+		arg.ProjectID,
+		arg.SenderID,
+		arg.Content,
+	)
+	return err
+}
+
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (github_repo_id, name, owner_id)
 VALUES ($1, $2, $3)
@@ -136,11 +158,11 @@ func (q *Queries) GetProjectsByOwner(ctx context.Context, ownerID pgtype.UUID) (
 
 const getPublicProfile = `-- name: GetPublicProfile :one
 SELECT
-    id,
-    username,
-    avatar_url,
-    display_name,
-    created_at
+id,
+username,
+avatar_url,
+display_name,
+created_at
 FROM users WHERE username = $1 LIMIT 1
 `
 
@@ -230,13 +252,13 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 
 const getUserProfile = `-- name: GetUserProfile :one
 SELECT
-    id,
-    github_id,
-    username,
-    avatar_url,
-    display_name,
-    profile_completed,
-    created_at
+id,
+github_id,
+username,
+avatar_url,
+display_name,
+profile_completed,
+created_at
 FROM users WHERE id = $1 LIMIT 1
 `
 
@@ -263,6 +285,23 @@ func (q *Queries) GetUserProfile(ctx context.Context, id pgtype.UUID) (GetUserPr
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const isMember = `-- name: IsMember :one
+SELECT 1 FROM memberships
+WHERE user_id = $1 AND project_id = $2 LIMIT 1
+`
+
+type IsMemberParams struct {
+	UserID    pgtype.UUID
+	ProjectID pgtype.UUID
+}
+
+func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (int32, error) {
+	row := q.db.QueryRow(ctx, isMember, arg.UserID, arg.ProjectID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const searchRepos = `-- name: SearchRepos :many
@@ -343,8 +382,8 @@ func (q *Queries) SearchReposFuzzy(ctx context.Context, arg SearchReposFuzzyPara
 
 const updateUserAvatar = `-- name: UpdateUserAvatar :one
 UPDATE users SET
-    avatar_url = $2,
-    updated_at = NOW()
+avatar_url = $2,
+updated_at = NOW()
 WHERE id = $1
 RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
 `
@@ -373,9 +412,9 @@ func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarPara
 
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users SET
-    display_name = COALESCE($2, display_name),
-    profile_completed = TRUE,
-    updated_at = NOW()
+display_name = COALESCE($2, display_name),
+profile_completed = TRUE,
+updated_at = NOW()
 WHERE id = $1
 RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
 `
@@ -404,15 +443,15 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 
 const upsertUser = `-- name: UpsertUser :one
 INSERT INTO users (
-    github_id, username, avatar_url, access_token
-) VALUES (
-    $1, $2, $3, $4
+	github_id, username, avatar_url, access_token
+	) VALUES (
+	$1, $2, $3, $4
 )
 ON CONFLICT (github_id) DO UPDATE SET
-    username = EXCLUDED.username,
-    avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
-    access_token = EXCLUDED.access_token,
-    updated_at = NOW()
+username = EXCLUDED.username,
+avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
+access_token = EXCLUDED.access_token,
+updated_at = NOW()
 RETURNING id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at
 `
 

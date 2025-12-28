@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"wireloop/internal/api"
+	"wireloop/internal/chat"
 	"wireloop/internal/db"
 	"wireloop/internal/middleware"
 
@@ -81,8 +82,8 @@ func main() {
 	})
 
 	r.GET("/api/test-db", app.testDBHandler)
-
-	Handler := &api.Handler{Queries: queries, Pool: pool}
+	hub := chat.NewHub()
+	Handler := &api.Handler{Queries: queries, Pool: pool, Hub: hub}
 	// Auth routes (public)
 	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
 	r.GET("/api/auth/github", func(c *gin.Context) {
@@ -110,6 +111,9 @@ func main() {
 		protected.GET("/projects", Handler.HandlelistProjects)
 		protected.GET("/github/repos", Handler.HandleGetGitHubRepos)
 		protected.GET("/search", Handler.HandleSearchQuery)
+		protected.POST("/loop/message", Handler.HandleSendMessage)
+		
+		protected.GET("/ws", Handler.HandleWS)
 	}
 
 	port := os.Getenv("PORT")
