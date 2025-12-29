@@ -100,19 +100,36 @@ func main() {
 	// Public profile route
 	r.GET("/api/users/:username", Handler.GetPublicProfile)
 
+	// Semi-public routes (work for both logged-in and anonymous users)
+	// Optional auth lets us check membership for logged-in users
+	r.GET("/api/loops/:name", middleware.OptionalAuthMiddleware(), Handler.HandleGetLoopDetails)
+	r.GET("/api/loops", Handler.HandleBrowseLoops)
+
 	// Protected routes (require auth)
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 	{
+		// Profile
 		protected.GET("/profile", Handler.GetProfile)
 		protected.PUT("/profile", Handler.UpdateProfile)
 		protected.POST("/profile/avatar", Handler.UploadAvatar)
+
+		// Loops management
 		protected.POST("/channel", Handler.HandleMakeChannel)
 		protected.GET("/projects", Handler.HandlelistProjects)
 		protected.GET("/github/repos", Handler.HandleGetGitHubRepos)
 		protected.GET("/search", Handler.HandleSearchQuery)
+		protected.GET("/my-memberships", Handler.HandleGetMyMemberships)
+
+		// Gatekeeper - Verify & Join
+		protected.POST("/verify-access", Handler.HandleVerifyAccess)
+		protected.POST("/loops/:name/join", Handler.HandleJoinLoop)
+
+		// Chat / Messages (use :name consistently to avoid route conflicts)
+		protected.GET("/loops/:name/messages", Handler.HandleGetMessages)
 		protected.POST("/loop/message", Handler.HandleSendMessage)
-		
+
+		// WebSocket
 		protected.GET("/ws", Handler.HandleWS)
 	}
 

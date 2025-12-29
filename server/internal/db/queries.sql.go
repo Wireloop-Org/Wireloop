@@ -99,6 +99,205 @@ func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, e
 	return i, err
 }
 
+const getAllLoops = `-- name: GetAllLoops :many
+SELECT 
+    p.id,
+    p.name,
+    p.github_repo_id,
+    p.created_at,
+    u.username AS owner_username,
+    u.avatar_url AS owner_avatar,
+    (SELECT COUNT(*) FROM memberships m WHERE m.project_id = p.id) AS member_count
+FROM projects p
+JOIN users u ON p.owner_id = u.id
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetAllLoopsParams struct {
+	Limit  int32
+	Offset int32
+}
+
+type GetAllLoopsRow struct {
+	ID            pgtype.UUID
+	Name          string
+	GithubRepoID  int64
+	CreatedAt     pgtype.Timestamptz
+	OwnerUsername string
+	OwnerAvatar   pgtype.Text
+	MemberCount   int64
+}
+
+func (q *Queries) GetAllLoops(ctx context.Context, arg GetAllLoopsParams) ([]GetAllLoopsRow, error) {
+	rows, err := q.db.Query(ctx, getAllLoops, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllLoopsRow
+	for rows.Next() {
+		var i GetAllLoopsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.GithubRepoID,
+			&i.CreatedAt,
+			&i.OwnerUsername,
+			&i.OwnerAvatar,
+			&i.MemberCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLoopMembers = `-- name: GetLoopMembers :many
+SELECT 
+    u.id,
+    u.username,
+    u.avatar_url,
+    u.display_name,
+    mem.role,
+    mem.joined_at
+FROM memberships mem
+JOIN users u ON mem.user_id = u.id
+WHERE mem.project_id = $1
+ORDER BY mem.joined_at ASC
+`
+
+type GetLoopMembersRow struct {
+	ID          pgtype.UUID
+	Username    string
+	AvatarUrl   pgtype.Text
+	DisplayName pgtype.Text
+	Role        pgtype.Text
+	JoinedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) GetLoopMembers(ctx context.Context, projectID pgtype.UUID) ([]GetLoopMembersRow, error) {
+	rows, err := q.db.Query(ctx, getLoopMembers, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLoopMembersRow
+	for rows.Next() {
+		var i GetLoopMembersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.AvatarUrl,
+			&i.DisplayName,
+			&i.Role,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMessages = `-- name: GetMessages :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.project_id = $1
+ORDER BY m.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetMessagesParams struct {
+	ProjectID pgtype.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetMessagesRow struct {
+	ID             int64
+	Content        string
+	CreatedAt      pgtype.Timestamptz
+	SenderID       pgtype.UUID
+	SenderUsername string
+	SenderAvatar   pgtype.Text
+}
+
+func (q *Queries) GetMessages(ctx context.Context, arg GetMessagesParams) ([]GetMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getMessages, arg.ProjectID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMessagesRow
+	for rows.Next() {
+		var i GetMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.SenderID,
+			&i.SenderUsername,
+			&i.SenderAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProjectByID = `-- name: GetProjectByID :one
+SELECT id, github_repo_id, name, owner_id, created_at FROM projects WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetProjectByID(ctx context.Context, id pgtype.UUID) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByID, id)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.GithubRepoID,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getProjectByName = `-- name: GetProjectByName :one
+SELECT id, github_repo_id, name, owner_id, created_at FROM projects WHERE name = $1 LIMIT 1
+`
+
+func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByName, name)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.GithubRepoID,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getProjectByOwnerAndName = `-- name: GetProjectByOwnerAndName :one
 SELECT id, github_repo_id, name, owner_id, created_at FROM projects
 WHERE owner_id = $1 AND name = $2
@@ -187,6 +386,38 @@ func (q *Queries) GetPublicProfile(ctx context.Context, username string) (GetPub
 	return i, err
 }
 
+const getRulesByProject = `-- name: GetRulesByProject :many
+SELECT id, project_id, criteria_type, threshold, created_at FROM rules
+WHERE project_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetRulesByProject(ctx context.Context, projectID pgtype.UUID) ([]Rule, error) {
+	rows, err := q.db.Query(ctx, getRulesByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Rule
+	for rows.Next() {
+		var i Rule
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.CriteriaType,
+			&i.Threshold,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByGithubID = `-- name: GetUserByGithubID :one
 SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE github_id = $1 LIMIT 1
 `
@@ -248,6 +479,50 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserMemberships = `-- name: GetUserMemberships :many
+SELECT 
+    p.id AS project_id,
+    p.name AS project_name,
+    mem.role,
+    mem.joined_at
+FROM memberships mem
+JOIN projects p ON mem.project_id = p.id
+WHERE mem.user_id = $1
+ORDER BY mem.joined_at DESC
+`
+
+type GetUserMembershipsRow struct {
+	ProjectID   pgtype.UUID
+	ProjectName string
+	Role        pgtype.Text
+	JoinedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserMemberships(ctx context.Context, userID pgtype.UUID) ([]GetUserMembershipsRow, error) {
+	rows, err := q.db.Query(ctx, getUserMemberships, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserMembershipsRow
+	for rows.Next() {
+		var i GetUserMembershipsRow
+		if err := rows.Scan(
+			&i.ProjectID,
+			&i.ProjectName,
+			&i.Role,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUserProfile = `-- name: GetUserProfile :one

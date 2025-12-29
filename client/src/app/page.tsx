@@ -74,13 +74,17 @@ function LoginPage() {
         }}
       />
 
+      {/* Floating orbs */}
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 p-8">
         {/* Logo / Brand */}
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <div className="flex flex-col items-center gap-4 opacity-0 animate-fade-in-down">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30 animate-pulse-glow">
             <svg
-              className="w-8 h-8 text-white"
+              className="w-10 h-10 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -93,17 +97,24 @@ function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Wireloop</h1>
-          <p className="text-zinc-500 text-center max-w-sm">
-            Build, collaborate, and ship faster with your team
+          <h1 className="text-5xl font-bold tracking-tight text-gradient">Wireloop</h1>
+          <p className="text-zinc-400 text-center max-w-md text-lg">
+            Merit-based communication for open source builders
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="w-full max-w-sm p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 backdrop-blur-sm">
+        <div className="w-full max-w-sm p-8 rounded-3xl glass border border-zinc-800/50 opacity-0 animate-scale-in stagger-2 hover-lift">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-semibold mb-2">Get Started</h2>
+            <p className="text-sm text-zinc-500">
+              Connect with GitHub to join exclusive contributor loops
+            </p>
+          </div>
+
           <button
             onClick={handleGitHubLogin}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-white text-zinc-900 font-medium hover:bg-zinc-100 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-white text-zinc-900 font-semibold hover:bg-zinc-100 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-white/10"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path
@@ -115,63 +126,54 @@ function LoginPage() {
             Continue with GitHub
           </button>
 
-          <div className="mt-6 pt-6 border-t border-zinc-800">
-            <p className="text-xs text-zinc-500 text-center">
-              By continuing, you agree to our Terms of Service and Privacy
-              Policy
+          <div className="mt-6 pt-6 border-t border-zinc-800/50">
+            <p className="text-xs text-zinc-600 text-center">
+              By continuing, you agree to our Terms of Service and Privacy Policy
             </p>
           </div>
         </div>
 
         {/* Features */}
-        <div className="flex gap-8 text-sm text-zinc-500">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-4 h-4 text-emerald-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            Real-time sync
+        <div className="flex flex-wrap justify-center gap-6 text-sm opacity-0 animate-fade-in-up stagger-4">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-zinc-400">Proof of Contribution</span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-4 h-4 text-emerald-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            Team collaboration
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800">
+            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+            <span className="text-zinc-400">Real-time Chat</span>
           </div>
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-4 h-4 text-emerald-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            GitHub integration
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800">
+            <span className="w-2 h-2 rounded-full bg-purple-500" />
+            <span className="text-zinc-400">GitHub Integration</span>
+          </div>
+        </div>
+
+        {/* How it works */}
+        <div className="mt-8 max-w-2xl opacity-0 animate-fade-in-up stagger-5">
+          <h3 className="text-center text-zinc-500 text-sm font-medium mb-6">HOW IT WORKS</h3>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                <span className="text-xl">🔗</span>
+              </div>
+              <h4 className="font-medium text-sm mb-1">Connect</h4>
+              <p className="text-xs text-zinc-500">Link your GitHub account</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-3">
+                <span className="text-xl">✓</span>
+              </div>
+              <h4 className="font-medium text-sm mb-1">Verify</h4>
+              <p className="text-xs text-zinc-500">Prove your contributions</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-3">
+                <span className="text-xl">💬</span>
+              </div>
+              <h4 className="font-medium text-sm mb-1">Chat</h4>
+              <p className="text-xs text-zinc-500">Join exclusive loops</p>
+            </div>
           </div>
         </div>
       </div>
@@ -179,11 +181,20 @@ function LoginPage() {
   );
 }
 
+interface LoopMembership {
+  loop_id: string;
+  loop_name: string;
+  role: string;
+  joined_at: string;
+}
+
 function Dashboard({ profile }: { profile: Profile }) {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [memberships, setMemberships] = useState<LoopMembership[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingMemberships, setLoadingMemberships] = useState(true);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -196,9 +207,27 @@ function Dashboard({ profile }: { profile: Profile }) {
     }
   }, []);
 
+  const loadMemberships = useCallback(async () => {
+    try {
+      const data = await api.getMyMemberships();
+      // Filter out loops we own (those are in projects)
+      setMemberships(data.memberships || []);
+    } catch (err) {
+      console.error("Failed to load memberships:", err);
+    } finally {
+      setLoadingMemberships(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadProjects();
-  }, [loadProjects]);
+    loadMemberships();
+  }, [loadProjects, loadMemberships]);
+
+  // Joined loops = memberships that are NOT in our projects
+  const joinedLoops = memberships.filter(
+    (m) => !projects.some((p) => p.Name === m.loop_name)
+  );
 
   const handleLogout = () => {
     clearToken();
@@ -207,6 +236,7 @@ function Dashboard({ profile }: { profile: Profile }) {
 
   const handleLoopCreated = () => {
     loadProjects();
+    loadMemberships();
   };
 
   const displayName = profile.display_name || profile.username;
@@ -287,17 +317,23 @@ function Dashboard({ profile }: { profile: Profile }) {
             <div className="text-3xl font-bold mb-1">
               {loadingProjects ? "..." : projects.length}
             </div>
-            <div className="text-sm text-zinc-500">Active Loops</div>
+            <div className="text-sm text-zinc-500">Owned Loops</div>
+          </div>
+          <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
+            <div className="text-2xl mb-2">🔗</div>
+            <div className="text-3xl font-bold mb-1">
+              {loadingMemberships ? "..." : joinedLoops.length}
+            </div>
+            <div className="text-sm text-zinc-500">Joined Loops</div>
           </div>
           <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
             <div className="text-2xl mb-2">⚡</div>
-            <div className="text-3xl font-bold mb-1">0</div>
-            <div className="text-sm text-zinc-500">Contributions</div>
-          </div>
-          <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
-            <div className="text-2xl mb-2">📁</div>
-            <div className="text-3xl font-bold mb-1">0</div>
-            <div className="text-sm text-zinc-500">Repositories</div>
+            <div className="text-3xl font-bold mb-1">
+              {loadingProjects || loadingMemberships
+                ? "..."
+                : projects.length + joinedLoops.length}
+            </div>
+            <div className="text-sm text-zinc-500">Total Active</div>
           </div>
         </div>
 
@@ -329,9 +365,58 @@ function Dashboard({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        {/* Your Loops */}
+        {/* Joined Loops - THIS IS THE MAIN FEATURE! */}
+        {(loadingMemberships || joinedLoops.length > 0) && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span>🔗</span> Joined Loops
+            </h2>
+            {loadingMemberships ? (
+              <div className="flex justify-center py-12">
+                <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {joinedLoops.map((membership) => (
+                  <button
+                    key={membership.loop_id}
+                    onClick={() => router.push(`/loops/${membership.loop_name}`)}
+                    className="p-5 rounded-2xl bg-zinc-900/50 border border-emerald-500/20 hover:border-emerald-500/40 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-600/20 flex items-center justify-center text-lg">
+                        🔗
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium truncate">
+                          {membership.loop_name}
+                        </h3>
+                        <p className="text-xs text-emerald-400 truncate">
+                          {membership.role}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-zinc-500">
+                      <span>
+                        Joined{" "}
+                        {new Date(membership.joined_at).toLocaleDateString()}
+                      </span>
+                      <span className="text-emerald-400 group-hover:text-emerald-300">
+                        Open →
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Your Loops (Created by you) */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Your Loops</h2>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span>💬</span> Your Loops
+          </h2>
           {loadingProjects ? (
             <div className="flex justify-center py-12">
               <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -351,7 +436,7 @@ function Dashboard({ profile }: { profile: Profile }) {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium truncate">{project.Name}</h3>
                       <p className="text-xs text-zinc-500 truncate">
-                        {project.FullName}
+                        Created by you
                       </p>
                     </div>
                   </div>

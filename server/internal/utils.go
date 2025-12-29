@@ -1,18 +1,20 @@
 package utils
 
 import (
+	"encoding/hex"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sony/sonyflake"
 )
 
-func GetUserIdFromContext(c *gin.Context)(pgtype.UUID, bool){
+func GetUserIdFromContext(c *gin.Context) (pgtype.UUID, bool) {
 	userID, ok := c.Get("user_id")
 	if !ok {
 		return pgtype.UUID{}, false
 	}
 	uid := userID.(pgtype.UUID)
-	return uid,true
+	return uid, true
 }
 
 func StrToUUID(s string) (pgtype.UUID, error) {
@@ -21,6 +23,18 @@ func StrToUUID(s string) (pgtype.UUID, error) {
 	return u, err
 }
 
+func UUIDToStr(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	// Format as standard UUID string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+	b := u.Bytes
+	return hex.EncodeToString(b[0:4]) + "-" +
+		hex.EncodeToString(b[4:6]) + "-" +
+		hex.EncodeToString(b[6:8]) + "-" +
+		hex.EncodeToString(b[8:10]) + "-" +
+		hex.EncodeToString(b[10:16])
+}
 
 var sf = sonyflake.NewSonyflake(sonyflake.Settings{})
 

@@ -102,3 +102,66 @@ VALUES ($1, $2, $3, $4);
 -- name: IsMember :one
 SELECT 1 FROM memberships
 WHERE user_id = $1 AND project_id = $2 LIMIT 1;
+
+-- name: GetMessages :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.project_id = $1
+ORDER BY m.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetProjectByID :one
+SELECT * FROM projects WHERE id = $1 LIMIT 1;
+
+-- name: GetProjectByName :one
+SELECT * FROM projects WHERE name = $1 LIMIT 1;
+
+-- name: GetLoopMembers :many
+SELECT 
+    u.id,
+    u.username,
+    u.avatar_url,
+    u.display_name,
+    mem.role,
+    mem.joined_at
+FROM memberships mem
+JOIN users u ON mem.user_id = u.id
+WHERE mem.project_id = $1
+ORDER BY mem.joined_at ASC;
+
+-- name: GetRulesByProject :many
+SELECT * FROM rules
+WHERE project_id = $1
+ORDER BY created_at ASC;
+
+-- name: GetAllLoops :many
+SELECT 
+    p.id,
+    p.name,
+    p.github_repo_id,
+    p.created_at,
+    u.username AS owner_username,
+    u.avatar_url AS owner_avatar,
+    (SELECT COUNT(*) FROM memberships m WHERE m.project_id = p.id) AS member_count
+FROM projects p
+JOIN users u ON p.owner_id = u.id
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: GetUserMemberships :many
+SELECT 
+    p.id AS project_id,
+    p.name AS project_name,
+    mem.role,
+    mem.joined_at
+FROM memberships mem
+JOIN projects p ON mem.project_id = p.id
+WHERE mem.user_id = $1
+ORDER BY mem.joined_at DESC;

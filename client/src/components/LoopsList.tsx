@@ -5,13 +5,13 @@ import { Project } from "@/lib/api";
 interface LoopsListProps {
   projects: Project[];
   onSelectLoop: (project: Project) => void;
-  selectedLoop: Project | null;
+  selectedLoopName?: string;
 }
 
 export default function LoopsList({
   projects,
   onSelectLoop,
-  selectedLoop,
+  selectedLoopName,
 }: LoopsListProps) {
   if (projects.length === 0) {
     return null;
@@ -21,8 +21,7 @@ export default function LoopsList({
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-zinc-400 px-2 mb-3">Your Loops</h3>
       {projects.map((project) => {
-        const isSelected =
-          selectedLoop?.ID?.Bytes === project.ID?.Bytes;
+        const isSelected = selectedLoopName === project.Name;
 
         return (
           <button
@@ -36,18 +35,14 @@ export default function LoopsList({
           >
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
-                isSelected
-                  ? "bg-indigo-600/30"
-                  : "bg-zinc-800"
+                isSelected ? "bg-indigo-600/30" : "bg-zinc-800"
               }`}
             >
               💬
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{project.Name}</div>
-              <div className="text-xs text-zinc-500 truncate">
-                {project.FullName}
-              </div>
+              <div className="text-xs text-zinc-500">Owner</div>
             </div>
             {isSelected && (
               <div className="w-2 h-2 rounded-full bg-indigo-500" />

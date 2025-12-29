@@ -1,10 +1,11 @@
 package chat
 
-import "sync"
+import (
+	"sync"
+)
 
-
-type Hub struct{
-	mu sync.RWMutex
+type Hub struct {
+	mu    sync.RWMutex
 	rooms map[string]map[*Client]struct{}
 }
 
@@ -32,13 +33,33 @@ func (h *Hub) Leave(room string, c *Client) {
 	}
 }
 
+// Broadcast sends to all clients in a room
 func (h *Hub) Broadcast(room string, msg any) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.rooms[room] {
-		select {
-		case c.send <- msg:
-		default:
+		c.Send(msg)
+	}
+}
+
+// BroadcastExcept sends to all clients except the sender (for optimistic UI)
+func (h *Hub) BroadcastExcept(room string, msg any, except *Client) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.rooms[room] {
+		if c != except {
+			c.Send(msg)
 		}
 	}
+}
+
+// GetClient returns a client if they're in the room
+func (h *Hub) GetClient(room string, client *Client) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if m := h.rooms[room]; m != nil {
+		_, exists := m[client]
+		return exists
+	}
+	return false
 }

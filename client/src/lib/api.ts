@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const WS_URL = API_URL.replace(/^http/, "ws");
 
 // Get stored auth token
 export function getToken(): string | null {
@@ -87,7 +88,6 @@ export interface GitHubRepo {
 export interface Project {
   ID: { Bytes: string; Valid: boolean };
   GithubRepoID: number;
-  FullName: string;
   Name: string;
   OwnerID: { Bytes: string; Valid: boolean };
   CreatedAt: { Time: string; Valid: boolean };
@@ -102,6 +102,80 @@ export interface CreateLoopData {
   repo_id: number;
   name: string;
   rules: Rule[];
+}
+
+// Loop Membership type for caching user memberships
+export interface LoopMembership {
+  loop_id: string;
+  loop_name: string;
+  role: string;
+  joined_at: string;
+}
+
+// Message types
+export interface Message {
+  id: string;
+  content: string;
+  sender_id: string;
+  sender_username: string;
+  sender_avatar: string;
+  created_at: string;
+}
+
+// Loop details types
+export interface LoopMember {
+  id: string;
+  username: string;
+  avatar_url: string;
+  display_name: string;
+  role: string;
+  joined_at: string;
+}
+
+export interface LoopDetails {
+  id: string;
+  name: string;
+  owner_id: string;
+  created_at: string;
+  is_member: boolean;
+  members: LoopMember[];
+}
+
+// WebSocket connection
+export function createWebSocket(projectId: string): WebSocket | null {
+  const token = getToken();
+  if (!token) return null;
+
+  const ws = new WebSocket(
+    `${WS_URL}/api/ws?project_id=${projectId}&token=${token}`
+  );
+  return ws;
+}
+
+// Browse loops types
+export interface BrowseLoop {
+  id: string;
+  name: string;
+  owner_username: string;
+  owner_avatar: string;
+  member_count: number;
+  created_at: string;
+}
+
+// Verification types
+export interface VerificationResult {
+  passed: boolean;
+  criteria: string;
+  required: number;
+  actual: number;
+  message: string;
+}
+
+export interface VerifyAccessResponse {
+  is_member: boolean;
+  can_join: boolean;
+  message: string;
+  results: VerificationResult[];
 }
 
 // API functions
@@ -148,9 +222,48 @@ export const api = {
   // Loops/Projects
   getProjects: () => apiRequest<{ projects: Project[] }>("/api/projects"),
 
+  // Get all loops the user is a member of
+  getMyMemberships: () =>
+    apiRequest<{ memberships: LoopMembership[] }>("/api/my-memberships"),
+
   createLoop: (data: CreateLoopData) =>
     apiRequest<{ id: string; name: string }>("/api/channel", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  // Browse loops (public)
+  browseLoops: (limit = 20, offset = 0) =>
+    apiRequest<{ loops: BrowseLoop[] }>(
+      `/api/loops?limit=${limit}&offset=${offset}`
+    ),
+
+  // Loop details (public)
+  getLoopDetails: (name: string) =>
+    apiRequest<LoopDetails>(`/api/loops/${name}`),
+
+  // Gatekeeper - Verify access
+  verifyAccess: (loopName: string) =>
+    apiRequest<VerifyAccessResponse>("/api/verify-access", {
+      method: "POST",
+      body: JSON.stringify({ loop_name: loopName }),
+    }),
+
+  // Join a loop
+  joinLoop: (loopName: string) =>
+    apiRequest<{ message: string; loop: string }>(`/api/loops/${loopName}/join`, {
+      method: "POST",
+    }),
+
+  // Messages (uses loop name, not ID)
+  getMessages: (loopName: string, limit = 50, offset = 0) =>
+    apiRequest<{ messages: Message[] }>(
+      `/api/loops/${encodeURIComponent(loopName)}/messages?limit=${limit}&offset=${offset}`
+    ),
+
+  sendMessage: (channelId: string, message: string) =>
+    apiRequest<Message>("/api/loop/message", {
+      method: "POST",
+      body: JSON.stringify({ channel_id: channelId, message_body: message }),
     }),
 };

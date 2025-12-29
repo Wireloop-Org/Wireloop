@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
-import { api, getToken, clearToken, Profile, Project } from "@/lib/api";
+import {
+  api,
+  getToken,
+  clearToken,
+  Profile,
+  Project,
+  LoopDetails,
+} from "@/lib/api";
 import ChatWindow from "@/components/ChatWindow";
 import LoopsList from "@/components/LoopsList";
 
@@ -14,8 +21,9 @@ export default function LoopPage() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [loopDetails, setLoopDetails] = useState<LoopDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const token = getToken();
@@ -25,24 +33,23 @@ export default function LoopPage() {
     }
 
     try {
-      const [profileData, projectsData] = await Promise.all([
+      const [profileData, projectsData, loopData] = await Promise.all([
         api.getProfile(),
         api.getProjects(),
+        api.getLoopDetails(decodeURIComponent(loopName)),
       ]);
 
       setProfile(profileData);
       setProjects(projectsData.projects || []);
-
-      // Find the selected project by name
-      const project = (projectsData.projects || []).find(
-        (p: Project) => p.Name === decodeURIComponent(loopName)
-      );
-      if (project) {
-        setSelectedProject(project);
+      setLoopDetails(loopData);
+    } catch (err) {
+      console.error("Error loading data:", err);
+      if (err instanceof Error && err.message.includes("loop not found")) {
+        setError("Loop not found");
+      } else {
+        clearToken();
+        router.push("/");
       }
-    } catch {
-      clearToken();
-      router.push("/");
     } finally {
       setLoading(false);
     }
@@ -53,7 +60,6 @@ export default function LoopPage() {
   }, [loadData]);
 
   const handleSelectLoop = (project: Project) => {
-    setSelectedProject(project);
     router.push(`/loops/${encodeURIComponent(project.Name)}`);
   };
 
@@ -134,7 +140,7 @@ export default function LoopPage() {
           <LoopsList
             projects={projects}
             onSelectLoop={handleSelectLoop}
-            selectedLoop={selectedProject}
+            selectedLoopName={loopDetails?.name}
           />
         </div>
 
@@ -175,9 +181,9 @@ export default function LoopPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
-        {selectedProject ? (
-          <ChatWindow project={selectedProject} />
-        ) : (
+        {loopDetails ? (
+          <ChatWindow loopDetails={loopDetails} onMembershipChanged={loadData} />
+        ) : error ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
               <div className="w-20 h-20 rounded-2xl bg-zinc-800/50 flex items-center justify-center text-4xl mx-auto mb-6">
@@ -196,9 +202,86 @@ export default function LoopPage() {
               </button>
             </div>
           </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Members Panel (collapsible) */}
+        {loopDetails && loopDetails.members.length > 0 && (
+          <MembersPanel members={loopDetails.members} />
         )}
       </main>
     </div>
   );
 }
 
+function MembersPanel({
+  members,
+}: {
+  members: LoopDetails["members"];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border-t border-zinc-800 bg-zinc-900/30">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-6 py-3 flex items-center justify-between text-sm hover:bg-zinc-800/30 transition-colors"
+      >
+        <span className="text-zinc-400">
+          {members.length} Member{members.length !== 1 ? "s" : ""}
+        </span>
+        <svg
+          className={`w-4 h-4 text-zinc-500 transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 15l7-7 7 7"
+          />
+        </svg>
+      </button>
+
+      {expanded && (
+        <div className="px-6 pb-4 flex flex-wrap gap-3">
+          {members.map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800/50"
+            >
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-700 relative">
+                {member.avatar_url ? (
+                  <Image
+                    src={member.avatar_url}
+                    alt={member.username}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs">
+                    {member.username[0]?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm text-zinc-300">
+                {member.display_name || member.username}
+              </span>
+              {member.role === "owner" && (
+                <span className="text-xs text-amber-500">👑</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
