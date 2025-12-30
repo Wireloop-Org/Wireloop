@@ -140,7 +140,7 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 	})
 }
 
-func (h *Handler) processAndUpdateAvatar(userID [16]byte, data []byte, contentType string) {
+func (h *Handler) processAndUpdateAvatar(userID pgtype.UUID, data []byte, contentType string) {
 	processedData, err := processAvatar(data, contentType)
 	if err != nil {
 		log.Printf("Error processing avatar for user %v: %v", userID, err)
@@ -150,7 +150,7 @@ func (h *Handler) processAndUpdateAvatar(userID [16]byte, data []byte, contentTy
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", base64.StdEncoding.EncodeToString(processedData))
 
 	_, err = h.Queries.UpdateUserAvatar(context.Background(), db.UpdateUserAvatarParams{
-		ID:        pgtype.UUID{Bytes: userID, Valid: true},
+		ID:        userID,
 		AvatarUrl: pgtype.Text{String: dataURL, Valid: true},
 	})
 	if err != nil {
