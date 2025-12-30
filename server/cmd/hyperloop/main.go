@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"wireloop/internal/api"
@@ -38,7 +39,22 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	config, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		log.Fatalf("Unable to parse database URL: %v\n", err)
+	}
+
+	maxConns := 10 // Default value
+	if maxConnsStr := os.Getenv("MAX_DB_CONN"); maxConnsStr != "" {
+		if parsedMaxConns, err := strconv.Atoi(maxConnsStr); err == nil {
+			maxConns = parsedMaxConns
+		} else {
+			log.Printf("Invalid MAX_DB_CONN value: %s. Using default %d", maxConnsStr, maxConns)
+		}
+	}
+	config.MaxConns = int32(maxConns)
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}

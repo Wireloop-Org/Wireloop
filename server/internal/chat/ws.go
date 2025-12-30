@@ -5,60 +5,61 @@ import (
 )
 
 type Hub struct {
-	mu    sync.RWMutex
-	rooms map[string]map[*Client]struct{}
+	rooms sync.Map // room -> *sync.Map[*Client]struct{}
 }
 
 func NewHub() *Hub {
-	return &Hub{rooms: make(map[string]map[*Client]struct{})}
+	return &Hub{}
 }
 
 func (h *Hub) Join(room string, c *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.rooms[room] == nil {
-		h.rooms[room] = make(map[*Client]struct{})
-	}
-	h.rooms[room][c] = struct{}{}
+	clients, _ := h.rooms.LoadOrStore(room, &sync.Map{})
+	clients.(*sync.Map).Store(c, struct{}{})
 }
 
 func (h *Hub) Leave(room string, c *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if m := h.rooms[room]; m != nil {
-		delete(m, c)
-		if len(m) == 0 {
-			delete(h.rooms, room)
+	if clients, ok := h.rooms.Load(room); ok {
+		clients.(*sync.Map).Delete(c)
+
+		// Check if room is empty and delete it
+		empty := true
+		clients.(*sync.Map).Range(func(key, value any) bool {
+			empty = false
+			return false // break
+		})
+
+		if empty {
+			h.rooms.Delete(room)
 		}
 	}
 }
 
 // Broadcast sends to all clients in a room
 func (h *Hub) Broadcast(room string, msg any) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for c := range h.rooms[room] {
-		c.Send(msg)
+	if clients, ok := h.rooms.Load(room); ok {
+		clients.(*sync.Map).Range(func(key, value any) bool {
+			key.(*Client).Send(msg)
+			return true
+		})
 	}
 }
 
 // BroadcastExcept sends to all clients except the sender (for optimistic UI)
 func (h *Hub) BroadcastExcept(room string, msg any, except *Client) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for c := range h.rooms[room] {
-		if c != except {
-			c.Send(msg)
-		}
+	if clients, ok := h.rooms.Load(room); ok {
+		clients.(*sync.Map).Range(func(key, value any) bool {
+			if key.(*Client) != except {
+				key.(*Client).Send(msg)
+			}
+			return true
+		})
 	}
 }
 
 // GetClient returns a client if they're in the room
 func (h *Hub) GetClient(room string, client *Client) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if m := h.rooms[room]; m != nil {
-		_, exists := m[client]
+	if clients, ok := h.rooms.Load(room); ok {
+		_, exists := clients.(*sync.Map).Load(client)
 		return exists
 	}
 	return false

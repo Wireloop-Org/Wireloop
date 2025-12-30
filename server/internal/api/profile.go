@@ -2,12 +2,14 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"wireloop/internal/db"
@@ -131,29 +133,29 @@ func (h *Handler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// Process and compress image
+	go h.processAndUpdateAvatar(userID, data, contentType)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Avatar upload accepted and is being processed.",
+	})
+}
+
+func (h *Handler) processAndUpdateAvatar(userID [16]byte, data []byte, contentType string) {
 	processedData, err := processAvatar(data, contentType)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("Error processing avatar for user %v: %v", userID, err)
 		return
 	}
 
-	// Convert to base64 data URL for storage
 	dataURL := fmt.Sprintf("data:image/jpeg;base64,%s", base64.StdEncoding.EncodeToString(processedData))
 
-	user, err := h.Queries.UpdateUserAvatar(c, db.UpdateUserAvatarParams{
-		ID:        userID,
+	_, err = h.Queries.UpdateUserAvatar(context.Background(), db.UpdateUserAvatarParams{
+		ID:        pgtype.UUID{Bytes: userID, Valid: true},
 		AvatarUrl: pgtype.Text{String: dataURL, Valid: true},
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update avatar"})
-		return
+		log.Printf("Error updating avatar for user %v: %v", userID, err)
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"avatar_url": user.AvatarUrl.String,
-		"message":    "Avatar updated successfully",
-	})
 }
 
 // GetPublicProfile returns a user's public profile by username
