@@ -2,3 +2,4 @@
 
 **/*.env
 **/*.key
+server/tests
