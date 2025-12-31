@@ -14,11 +14,11 @@ import (
 type CriteriaType string
 
 const (
-	PRCount   CriteriaType = "PR_COUNT"
-	PRMerged  CriteriaType = "PR_MERGED"
+	PRCount     CriteriaType = "PR_COUNT"
+	PRMerged    CriteriaType = "PR_MERGED"
 	CommitCount CriteriaType = "COMMIT_COUNT"
-	StarCount CriteriaType = "STAR_COUNT"
-	IssueCount CriteriaType = "ISSUE_COUNT"
+	StarCount   CriteriaType = "STAR_COUNT"
+	IssueCount  CriteriaType = "ISSUE_COUNT"
 )
 
 // Rule represents a single access requirement
@@ -29,11 +29,11 @@ type Rule struct {
 
 // VerificationResult contains the result of a verification check
 type VerificationResult struct {
-	Passed      bool   `json:"passed"`
-	Criteria    string `json:"criteria"`
-	Required    int    `json:"required"`
-	Actual      int    `json:"actual"`
-	Message     string `json:"message"`
+	Passed   bool   `json:"passed"`
+	Criteria string `json:"criteria"`
+	Required int    `json:"required"`
+	Actual   int    `json:"actual"`
+	Message  string `json:"message"`
 }
 
 // Gatekeeper verifies user contributions against repository rules
@@ -115,38 +115,38 @@ func (g *Gatekeeper) getPRCount(ctx context.Context, accessToken, owner, repo, u
 	if mergedOnly {
 		state = "closed"
 	}
-	
+
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls?state=%s&per_page=100", owner, repo, state)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	
+
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
-	
+
 	var pulls []struct {
 		User struct {
 			Login string `json:"login"`
 		} `json:"user"`
 		MergedAt *string `json:"merged_at"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&pulls); err != nil {
 		return 0, err
 	}
-	
+
 	count := 0
 	for _, pr := range pulls {
 		if strings.EqualFold(pr.User.Login, username) {
@@ -159,77 +159,77 @@ func (g *Gatekeeper) getPRCount(ctx context.Context, accessToken, owner, repo, u
 			}
 		}
 	}
-	
+
 	return count, nil
 }
 
 // getCommitCount fetches the number of commits by a user on a repo
 func (g *Gatekeeper) getCommitCount(ctx context.Context, accessToken, owner, repo, username string) (int, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?author=%s&per_page=100", owner, repo, username)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	
+
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
-	
+
 	// Check Link header for total count (if paginated)
 	linkHeader := resp.Header.Get("Link")
 	if linkHeader != "" && strings.Contains(linkHeader, "last") {
 		// Parse last page number from Link header for accurate count
 		// For now, just count what we get
 	}
-	
+
 	var commits []interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&commits); err != nil {
 		return 0, err
 	}
-	
+
 	return len(commits), nil
 }
 
 // getIssueCount fetches the number of issues created by a user on a repo
 func (g *Gatekeeper) getIssueCount(ctx context.Context, accessToken, owner, repo, username string) (int, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues?creator=%s&state=all&per_page=100", owner, repo, username)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	
+
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
-	
+
 	var issues []struct {
 		PullRequest interface{} `json:"pull_request"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
 		return 0, err
 	}
-	
+
 	// Filter out PRs (GitHub returns PRs in issues endpoint)
 	count := 0
 	for _, issue := range issues {
@@ -237,40 +237,40 @@ func (g *Gatekeeper) getIssueCount(ctx context.Context, accessToken, owner, repo
 			count++
 		}
 	}
-	
+
 	return count, nil
 }
 
 // getStarCount fetches the star count for a repo
 func (g *Gatekeeper) getStarCount(ctx context.Context, accessToken, owner, repo string) (int, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	
+
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
-	
+
 	var repoData struct {
 		StargazersCount int `json:"stargazers_count"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&repoData); err != nil {
 		return 0, err
 	}
-	
+
 	return repoData.StargazersCount, nil
 }
 
@@ -278,5 +278,3 @@ func (g *Gatekeeper) getStarCount(ctx context.Context, accessToken, owner, repo 
 func ParseThreshold(s string) (int, error) {
 	return strconv.Atoi(s)
 }
-
-

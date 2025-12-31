@@ -2,8 +2,12 @@
 
 import { Project } from "@/lib/api";
 
+interface ExtendedProject extends Project {
+  _role?: string;
+}
+
 interface LoopsListProps {
-  projects: Project[];
+  projects: ExtendedProject[];
   onSelectLoop: (project: Project) => void;
   selectedLoopName?: string;
 }
@@ -14,43 +18,120 @@ export default function LoopsList({
   selectedLoopName,
 }: LoopsListProps) {
   if (projects.length === 0) {
-    return null;
+    return (
+      <div className="text-center py-8 text-zinc-500 text-sm">
+        <p>No loops yet</p>
+        <p className="text-xs mt-1">Create or join a loop to get started</p>
+      </div>
+    );
   }
 
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-zinc-400 px-2 mb-3">Your Loops</h3>
-      {projects.map((project) => {
-        const isSelected = selectedLoopName === project.Name;
+  // Separate owned vs joined
+  const ownedLoops = projects.filter(p => !p._role || p._role === "owner");
+  const joinedLoops = projects.filter(p => p._role && p._role !== "owner");
 
-        return (
-          <button
-            key={project.ID?.Bytes || project.GithubRepoID}
-            onClick={() => onSelectLoop(project)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
-              isSelected
-                ? "bg-indigo-600/20 border border-indigo-500/30"
-                : "hover:bg-zinc-800/50 border border-transparent"
-            }`}
-          >
-            <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
-                isSelected ? "bg-indigo-600/30" : "bg-zinc-800"
-              }`}
-            >
-              💬
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{project.Name}</div>
-              <div className="text-xs text-zinc-500">Owner</div>
-            </div>
-            {isSelected && (
-              <div className="w-2 h-2 rounded-full bg-indigo-500" />
-            )}
-          </button>
-        );
-      })}
+  return (
+    <div className="space-y-4">
+      {/* Owned Loops */}
+      {ownedLoops.length > 0 && (
+        <div>
+          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider px-2 mb-2">
+            Your Loops
+          </h3>
+          <div className="space-y-1">
+            {ownedLoops.map((project) => (
+              <LoopItem
+                key={project.ID?.Bytes || project.GithubRepoID}
+                project={project}
+                isSelected={selectedLoopName === project.Name}
+                onSelect={onSelectLoop}
+                badge="Owner"
+                badgeColor="indigo"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Joined Loops */}
+      {joinedLoops.length > 0 && (
+        <div>
+          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider px-2 mb-2">
+            Joined
+          </h3>
+          <div className="space-y-1">
+            {joinedLoops.map((project) => (
+              <LoopItem
+                key={project.ID?.Bytes || project.GithubRepoID}
+                project={project}
+                isSelected={selectedLoopName === project.Name}
+                onSelect={onSelectLoop}
+                badge="Member"
+                badgeColor="emerald"
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+function LoopItem({
+  project,
+  isSelected,
+  onSelect,
+  badge,
+  badgeColor,
+}: {
+  project: Project;
+  isSelected: boolean;
+  onSelect: (project: Project) => void;
+  badge: string;
+  badgeColor: "indigo" | "emerald";
+}) {
+  const colorClasses = {
+    indigo: {
+      selected: "bg-indigo-600/20 border-indigo-500/30",
+      icon: "bg-indigo-600/30",
+      dot: "bg-indigo-500",
+      badge: "bg-indigo-500/20 text-indigo-400",
+    },
+    emerald: {
+      selected: "bg-emerald-600/20 border-emerald-500/30",
+      icon: "bg-emerald-600/30",
+      dot: "bg-emerald-500",
+      badge: "bg-emerald-500/20 text-emerald-400",
+    },
+  };
+
+  const colors = colorClasses[badgeColor];
+
+  return (
+    <button
+      onClick={() => onSelect(project)}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
+        isSelected
+          ? `${colors.selected} border`
+          : "hover:bg-zinc-800/50 border border-transparent"
+      }`}
+    >
+      <div
+        className={`w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0 ${
+          isSelected ? colors.icon : "bg-zinc-800"
+        }`}
+      >
+        💬
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate text-sm">{project.Name}</div>
+        <div className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded-full inline-block ${colors.badge}`}>
+          {badge}
+        </div>
+      </div>
+      {isSelected && (
+        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
+      )}
+    </button>
+  );
+}

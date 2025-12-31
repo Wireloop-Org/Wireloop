@@ -1,6 +1,27 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const WS_URL = API_URL.replace(/^http/, "ws");
 
+// Simple in-memory cache for fast access
+const cache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL = 30 * 1000; // 30 seconds for profile/projects
+
+function getCached<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: unknown): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+export function clearCache(): void {
+  cache.clear();
+}
+
 // Get stored auth token
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -15,6 +36,7 @@ export function setToken(token: string): void {
 // Clear auth token
 export function clearToken(): void {
   localStorage.removeItem("wireloop_token");
+  clearCache();
 }
 
 // Check if user is authenticated
@@ -180,8 +202,14 @@ export interface VerifyAccessResponse {
 
 // API functions
 export const api = {
-  // Profile
-  getProfile: () => apiRequest<Profile>("/api/profile"),
+  // Profile (cached)
+  getProfile: async (): Promise<Profile> => {
+    const cached = getCached<Profile>("profile");
+    if (cached) return cached;
+    const data = await apiRequest<Profile>("/api/profile");
+    setCache("profile", data);
+    return data;
+  },
 
   updateProfile: (data: UpdateProfileData) =>
     apiRequest<Profile>("/api/profile", {
@@ -219,12 +247,23 @@ export const api = {
   getGitHubRepos: () =>
     apiRequest<{ repos: GitHubRepo[] }>("/api/github/repos"),
 
-  // Loops/Projects
-  getProjects: () => apiRequest<{ projects: Project[] }>("/api/projects"),
+  // Loops/Projects (cached)
+  getProjects: async (): Promise<{ projects: Project[] }> => {
+    const cached = getCached<{ projects: Project[] }>("projects");
+    if (cached) return cached;
+    const data = await apiRequest<{ projects: Project[] }>("/api/projects");
+    setCache("projects", data);
+    return data;
+  },
 
-  // Get all loops the user is a member of
-  getMyMemberships: () =>
-    apiRequest<{ memberships: LoopMembership[] }>("/api/my-memberships"),
+  // Get all loops the user is a member of (cached)
+  getMyMemberships: async (): Promise<{ memberships: LoopMembership[] }> => {
+    const cached = getCached<{ memberships: LoopMembership[] }>("memberships");
+    if (cached) return cached;
+    const data = await apiRequest<{ memberships: LoopMembership[] }>("/api/my-memberships");
+    setCache("memberships", data);
+    return data;
+  },
 
   createLoop: (data: CreateLoopData) =>
     apiRequest<{ id: string; name: string }>("/api/channel", {

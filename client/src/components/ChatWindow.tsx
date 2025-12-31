@@ -254,9 +254,9 @@ export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWin
   }
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900/30">
+    <div className="flex flex-col h-full bg-zinc-900/30 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
         <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center text-lg">
           💬
         </div>
@@ -285,8 +285,8 @@ export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWin
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6">
+      {/* Messages - this is the only scrollable area */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -346,8 +346,8 @@ export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWin
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-zinc-800">
+      {/* Input - fixed at bottom */}
+      <div className="flex-shrink-0 p-4 border-t border-zinc-800">
         <div className="flex items-end gap-3">
           <div className="flex-1 relative">
             <textarea
