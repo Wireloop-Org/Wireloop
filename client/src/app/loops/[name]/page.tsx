@@ -33,15 +33,32 @@ export default function LoopPage() {
     }
 
     try {
-      const [profileData, projectsData, loopData] = await Promise.all([
+      // Fetch all data in parallel - loop details first (most important)
+      // Profile/projects/memberships use in-memory cache for instant subsequent loads
+      const [loopData, profileData, projectsData, membershipsData] = await Promise.all([
+        api.getLoopDetails(decodeURIComponent(loopName)),
         api.getProfile(),
         api.getProjects(),
-        api.getLoopDetails(decodeURIComponent(loopName)),
+        api.getMyMemberships(),
       ]);
 
-      setProfile(profileData);
-      setProjects(projectsData.projects || []);
       setLoopDetails(loopData);
+      setProfile(profileData);
+      
+      // Combine owned projects with memberships
+      const ownedProjects = projectsData.projects || [];
+      const membershipProjects: Project[] = (membershipsData.memberships || [])
+        .filter(m => !ownedProjects.some(p => p.Name === m.loop_name))
+        .map(m => ({
+          ID: { Bytes: m.loop_id, Valid: true },
+          GithubRepoID: 0,
+          Name: m.loop_name,
+          OwnerID: { Bytes: "", Valid: false },
+          CreatedAt: { Time: m.joined_at, Valid: true },
+          _role: m.role,
+        } as Project & { _role?: string }));
+      
+      setProjects([...ownedProjects, ...membershipProjects]);
     } catch (err) {
       console.error("Error loading data:", err);
       if (err instanceof Error && err.message.includes("loop not found")) {
@@ -84,9 +101,9 @@ export default function LoopPage() {
   const avatarUrl = profile.avatar_url;
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f] flex">
+    <div className="h-screen bg-[#0c0c0f] flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 border-r border-zinc-800 bg-zinc-900/30 flex flex-col">
+      <aside className="w-72 border-r border-zinc-800 bg-zinc-900/30 flex flex-col h-full">
         {/* Logo */}
         <div className="p-4 border-b border-zinc-800">
           <button
@@ -180,7 +197,7 @@ export default function LoopPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
         {loopDetails ? (
           <ChatWindow loopDetails={loopDetails} onMembershipChanged={loadData} />
         ) : error ? (
@@ -208,9 +225,11 @@ export default function LoopPage() {
           </div>
         )}
 
-        {/* Members Panel (collapsible) */}
+        {/* Members Panel (collapsible) - fixed at bottom */}
         {loopDetails && loopDetails.members.length > 0 && (
-          <MembersPanel members={loopDetails.members} />
+          <div className="flex-shrink-0">
+            <MembersPanel members={loopDetails.members} />
+          </div>
         )}
       </main>
     </div>
