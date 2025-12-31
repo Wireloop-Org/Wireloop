@@ -1,9 +1,13 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const WS_URL = API_URL.replace(/^http/, "ws");
 
-// Simple in-memory cache for fast access
+// ============================================================================
+// PERFORMANCE: In-memory cache with smart invalidation
+// ============================================================================
 const cache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 30 * 1000; // 30 seconds for profile/projects
+const CACHE_TTL = 60 * 1000; // 60 seconds - longer TTL for faster perceived performance
+const INIT_CACHE_KEY = "init_data";
+const LOOP_CACHE_PREFIX = "loop_";
 
 function getCached<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -21,6 +25,13 @@ function setCache(key: string, data: unknown): void {
 export function clearCache(): void {
   cache.clear();
 }
+
+export function invalidateLoopCache(loopName: string): void {
+  cache.delete(LOOP_CACHE_PREFIX + loopName);
+}
+
+// Prefetch cache - stores promises for in-flight requests
+const prefetchCache = new Map<string, Promise<unknown>>();
 
 // Get stored auth token
 export function getToken(): string | null {
@@ -199,11 +210,96 @@ export interface VerifyAccessResponse {
   message: string;
   results: VerificationResult[];
 }
+export interface InitData {
+  profile: {
+    id: string;
+    username: string;
+    avatar_url: string;
+    display_name: string;
+    profile_completed: boolean;
+    created_at: string;
+  };
+  projects: Array<{
+    id: string;
+    name: string;
+    github_repo_id: number;
+    created_at: string;
+  }>;
+  memberships: Array<{
+    loop_id: string;
+    loop_name: string;
+    role: string;
+    joined_at: string;
+  }>;
+  _timing?: Record<string, number>;
+}
+
+export interface LoopFullData {
+  id: string;
+  name: string;
+  owner_id: string;
+  created_at: string;
+  is_member: boolean;
+  members: LoopMember[];
+  messages: Message[];
+  _timing?: Record<string, number>;
+}
 
 // API functions
 export const api = {
+  
+  // Get ALL initial data in ONE request (profile + projects + memberships)
+  getInit: async (): Promise<InitData> => {
+    const cached = getCached<InitData>(INIT_CACHE_KEY);
+    if (cached) return cached;
+    const data = await apiRequest<InitData>("/api/init");
+    setCache(INIT_CACHE_KEY, data);
+    return data;
+  },
+
+  // Get loop details + messages in ONE request
+  getLoopFull: async (name: string): Promise<LoopFullData> => {
+    const cacheKey = LOOP_CACHE_PREFIX + name;
+    const cached = getCached<LoopFullData>(cacheKey);
+    if (cached) return cached;
+    const data = await apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`);
+    setCache(cacheKey, data);
+    return data;
+  },
+
+  // Prefetch loop data on hover (fire-and-forget)
+  prefetchLoop: (name: string): void => {
+    const cacheKey = LOOP_CACHE_PREFIX + name;
+    if (getCached(cacheKey) || prefetchCache.has(cacheKey)) return;
+    
+    const promise = apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`)
+      .then(data => {
+        setCache(cacheKey, data);
+        prefetchCache.delete(cacheKey);
+        return data;
+      })
+      .catch(() => {
+        prefetchCache.delete(cacheKey);
+      });
+    
+    prefetchCache.set(cacheKey, promise);
+  },
+
   // Profile (cached)
   getProfile: async (): Promise<Profile> => {
+    // Try to get from init cache first
+    const initData = getCached<InitData>(INIT_CACHE_KEY);
+    if (initData?.profile) {
+      return {
+        id: initData.profile.id,
+        username: initData.profile.username,
+        avatar_url: initData.profile.avatar_url,
+        display_name: initData.profile.display_name,
+        profile_completed: initData.profile.profile_completed,
+        created_at: initData.profile.created_at,
+      };
+    }
+    
     const cached = getCached<Profile>("profile");
     if (cached) return cached;
     const data = await apiRequest<Profile>("/api/profile");

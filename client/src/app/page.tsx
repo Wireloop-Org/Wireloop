@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, getToken, clearToken, Profile, Project } from "@/lib/api";
+import { api, getToken, clearToken, Profile } from "@/lib/api";
 import CreateLoopModal from "@/components/CreateLoopModal";
 
 export default function Home() {
@@ -181,7 +181,14 @@ function LoginPage() {
   );
 }
 
-interface LoopMembership {
+interface DashboardProject {
+  id: string;
+  name: string;
+  github_repo_id: number;
+  created_at: string;
+}
+
+interface DashboardMembership {
   loop_id: string;
   loop_name: string;
   role: string;
@@ -190,43 +197,30 @@ interface LoopMembership {
 
 function Dashboard({ profile }: { profile: Profile }) {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [memberships, setMemberships] = useState<LoopMembership[]>([]);
+  const [projects, setProjects] = useState<DashboardProject[]>([]);
+  const [memberships, setMemberships] = useState<DashboardMembership[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [loadingMemberships, setLoadingMemberships] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const loadProjects = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const data = await api.getProjects();
+      const data = await api.getInit();
       setProjects(data.projects || []);
-    } catch (err) {
-      console.error("Failed to load projects:", err);
-    } finally {
-      setLoadingProjects(false);
-    }
-  }, []);
-
-  const loadMemberships = useCallback(async () => {
-    try {
-      const data = await api.getMyMemberships();
-      // Filter out loops we own (those are in projects)
       setMemberships(data.memberships || []);
     } catch (err) {
-      console.error("Failed to load memberships:", err);
+      console.error("Failed to load dashboard:", err);
     } finally {
-      setLoadingMemberships(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadProjects();
-    loadMemberships();
-  }, [loadProjects, loadMemberships]);
+    loadData();
+  }, [loadData]);
 
   // Joined loops = memberships that are NOT in our projects
   const joinedLoops = memberships.filter(
-    (m) => !projects.some((p) => p.Name === m.loop_name)
+    (m) => !projects.some((p) => p.name === m.loop_name)
   );
 
   const handleLogout = () => {
@@ -235,8 +229,7 @@ function Dashboard({ profile }: { profile: Profile }) {
   };
 
   const handleLoopCreated = () => {
-    loadProjects();
-    loadMemberships();
+    loadData();
   };
 
   const displayName = profile.display_name || profile.username;
@@ -315,23 +308,21 @@ function Dashboard({ profile }: { profile: Profile }) {
           <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
             <div className="text-2xl mb-2">💬</div>
             <div className="text-3xl font-bold mb-1">
-              {loadingProjects ? "..." : projects.length}
+              {loading ? "..." : projects.length}
             </div>
             <div className="text-sm text-zinc-500">Owned Loops</div>
           </div>
           <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
             <div className="text-2xl mb-2">🔗</div>
             <div className="text-3xl font-bold mb-1">
-              {loadingMemberships ? "..." : joinedLoops.length}
+              {loading ? "..." : joinedLoops.length}
             </div>
             <div className="text-sm text-zinc-500">Joined Loops</div>
           </div>
           <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
             <div className="text-2xl mb-2">⚡</div>
             <div className="text-3xl font-bold mb-1">
-              {loadingProjects || loadingMemberships
-                ? "..."
-                : projects.length + joinedLoops.length}
+              {loading ? "..." : projects.length + joinedLoops.length}
             </div>
             <div className="text-sm text-zinc-500">Total Active</div>
           </div>
@@ -351,7 +342,7 @@ function Dashboard({ profile }: { profile: Profile }) {
               Create Loop
             </button>
           </div>
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+          <div className="p-6 rounded-2xl bg-linear-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
             <h3 className="font-semibold text-lg mb-2">Browse Loops</h3>
             <p className="text-zinc-400 text-sm mb-4">
               Search for repositories and join their exclusive chat loops
@@ -366,12 +357,12 @@ function Dashboard({ profile }: { profile: Profile }) {
         </div>
 
         {/* Joined Loops - THIS IS THE MAIN FEATURE! */}
-        {(loadingMemberships || joinedLoops.length > 0) && (
+        {(loading || joinedLoops.length > 0) && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <span>🔗</span> Joined Loops
             </h2>
-            {loadingMemberships ? (
+            {loading ? (
               <div className="flex justify-center py-12">
                 <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
               </div>
@@ -380,7 +371,7 @@ function Dashboard({ profile }: { profile: Profile }) {
                 {joinedLoops.map((membership) => (
                   <button
                     key={membership.loop_id}
-                    onClick={() => router.push(`/loops/${membership.loop_name}`)}
+                    onClick={() => router.push(`/loops/${encodeURIComponent(membership.loop_name)}`)}
                     className="p-5 rounded-2xl bg-zinc-900/50 border border-emerald-500/20 hover:border-emerald-500/40 transition-all text-left group"
                   >
                     <div className="flex items-center gap-3 mb-3">
@@ -417,7 +408,7 @@ function Dashboard({ profile }: { profile: Profile }) {
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <span>💬</span> Your Loops
           </h2>
-          {loadingProjects ? (
+          {loading ? (
             <div className="flex justify-center py-12">
               <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
@@ -425,8 +416,8 @@ function Dashboard({ profile }: { profile: Profile }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
                 <button
-                  key={project.ID?.Bytes || project.GithubRepoID}
-                  onClick={() => router.push(`/loops/${project.Name}`)}
+                  key={project.id}
+                  onClick={() => router.push(`/loops/${encodeURIComponent(project.name)}`)}
                   className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all text-left group"
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -434,7 +425,7 @@ function Dashboard({ profile }: { profile: Profile }) {
                       💬
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{project.Name}</h3>
+                      <h3 className="font-medium truncate">{project.name}</h3>
                       <p className="text-xs text-zinc-500 truncate">
                         Created by you
                       </p>

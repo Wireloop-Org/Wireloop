@@ -125,6 +125,15 @@ func main() {
 	protected := r.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 	{
+		// OPTIMIZED: Single endpoint for all initial data (profile + projects + memberships)
+		protected.GET("/init", Handler.HandleInit)
+
+		// OPTIMIZED: Single endpoint for loop details + messages
+		protected.GET("/loops/:name/full", Handler.HandleLoopFull)
+
+		// Prefetch endpoint (for hover optimization)
+		protected.GET("/loops/:name/prefetch", Handler.HandlePrefetch)
+
 		// Profile
 		protected.GET("/profile", Handler.GetProfile)
 		protected.PUT("/profile", Handler.UpdateProfile)

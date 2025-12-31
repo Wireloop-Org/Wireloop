@@ -1,20 +1,22 @@
 "use client";
 
-import { Project } from "@/lib/api";
-
-interface ExtendedProject extends Project {
-  _role?: string;
+interface SidebarProject {
+  id: string;
+  name: string;
+  role: string;
 }
 
 interface LoopsListProps {
-  projects: ExtendedProject[];
-  onSelectLoop: (project: Project) => void;
+  projects: SidebarProject[];
+  onSelectLoop: (project: SidebarProject) => void;
+  onHoverLoop?: (project: SidebarProject) => void;
   selectedLoopName?: string;
 }
 
 export default function LoopsList({
   projects,
   onSelectLoop,
+  onHoverLoop,
   selectedLoopName,
 }: LoopsListProps) {
   if (projects.length === 0) {
@@ -27,8 +29,8 @@ export default function LoopsList({
   }
 
   // Separate owned vs joined
-  const ownedLoops = projects.filter(p => !p._role || p._role === "owner");
-  const joinedLoops = projects.filter(p => p._role && p._role !== "owner");
+  const ownedLoops = projects.filter(p => p.role === "owner");
+  const joinedLoops = projects.filter(p => p.role !== "owner");
 
   return (
     <div className="space-y-4">
@@ -41,10 +43,11 @@ export default function LoopsList({
           <div className="space-y-1">
             {ownedLoops.map((project) => (
               <LoopItem
-                key={project.ID?.Bytes || project.GithubRepoID}
+                key={project.id}
                 project={project}
-                isSelected={selectedLoopName === project.Name}
+                isSelected={selectedLoopName === project.name}
                 onSelect={onSelectLoop}
+                onHover={onHoverLoop}
                 badge="Owner"
                 badgeColor="indigo"
               />
@@ -62,10 +65,11 @@ export default function LoopsList({
           <div className="space-y-1">
             {joinedLoops.map((project) => (
               <LoopItem
-                key={project.ID?.Bytes || project.GithubRepoID}
+                key={project.id}
                 project={project}
-                isSelected={selectedLoopName === project.Name}
+                isSelected={selectedLoopName === project.name}
                 onSelect={onSelectLoop}
+                onHover={onHoverLoop}
                 badge="Member"
                 badgeColor="emerald"
               />
@@ -81,12 +85,14 @@ function LoopItem({
   project,
   isSelected,
   onSelect,
+  onHover,
   badge,
   badgeColor,
 }: {
-  project: Project;
+  project: SidebarProject;
   isSelected: boolean;
-  onSelect: (project: Project) => void;
+  onSelect: (project: SidebarProject) => void;
+  onHover?: (project: SidebarProject) => void;
   badge: string;
   badgeColor: "indigo" | "emerald";
 }) {
@@ -110,6 +116,7 @@ function LoopItem({
   return (
     <button
       onClick={() => onSelect(project)}
+      onMouseEnter={() => onHover?.(project)}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
         isSelected
           ? `${colors.selected} border`
@@ -124,7 +131,7 @@ function LoopItem({
         💬
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate text-sm">{project.Name}</div>
+        <div className="font-medium truncate text-sm">{project.name}</div>
         <div className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded-full inline-block ${colors.badge}`}>
           {badge}
         </div>

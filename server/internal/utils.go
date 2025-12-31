@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/hex"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -41,4 +42,8 @@ var sf = sonyflake.NewSonyflake(sonyflake.Settings{})
 func GetMessageId() int64 {
 	id, _ := sf.NextID()
 	return int64(id)
+}
+
+func FormatMessageID(id int64) string {
+	return strconv.FormatInt(id, 10)
 }
