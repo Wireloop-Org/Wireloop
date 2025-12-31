@@ -7,14 +7,16 @@ import { api, createWebSocket, Message, LoopDetails, VerifyAccessResponse } from
 
 interface ChatWindowProps {
   loopDetails: LoopDetails;
+  initialMessages?: Message[]; // OPTIMIZATION: Pass messages from parent to avoid extra fetch
   onMembershipChanged?: () => void;
 }
 
-export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWindowProps) {
+export default function ChatWindow({ loopDetails, initialMessages, onMembershipChanged }: ChatWindowProps) {
   const router = useRouter();
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+  // OPTIMIZATION: Use initial messages if provided, skip separate fetch
+  const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [loading, setLoading] = useState(!initialMessages && loopDetails.is_member);
   const [connected, setConnected] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verification, setVerification] = useState<VerifyAccessResponse | null>(null);
@@ -26,9 +28,15 @@ export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWin
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-
-  // Fetch message history
+  // OPTIMIZATION: Only fetch messages if not provided initially
   useEffect(() => {
+    // If we already have messages from parent, skip fetch
+    if (initialMessages && initialMessages.length > 0) {
+      setMessages(initialMessages);
+      setLoading(false);
+      return;
+    }
+
     const fetchMessages = async () => {
       try {
         const data = await api.getMessages(loopDetails.name);
@@ -40,12 +48,12 @@ export default function ChatWindow({ loopDetails, onMembershipChanged }: ChatWin
       }
     };
 
-    if (loopDetails.is_member) {
+    if (loopDetails.is_member && !initialMessages) {
       fetchMessages();
     } else {
       setLoading(false);
     }
-  }, [loopDetails.name, loopDetails.is_member]);
+  }, [loopDetails.name, loopDetails.is_member, initialMessages]);
 
   // Connect WebSocket
   useEffect(() => {
