@@ -1,64 +1,108 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, clearToken, Profile } from "@/lib/api";
+import { clearToken } from "@/lib/api";
+import { useAuthStore, useLoopsStore } from "@/store";
 import CreateLoopModal from "@/components/CreateLoopModal";
+import { useState } from "react";
 
-interface DashboardProject {
-    id: string;
+// Memoized loop card component to prevent unnecessary re-renders
+const LoopCard = memo(function LoopCard({
+    name,
+    subtitle,
+    icon,
+    date,
+    onClick,
+}: {
     name: string;
-    github_repo_id: number;
-    created_at: string;
-}
+    subtitle: string;
+    icon: string;
+    date?: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className="p-5 rounded-2xl glass hover:border-accent/40 transition-all text-left group hover-lift"
+        >
+            <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
+                    {icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{name}</h3>
+                    <p className="text-xs text-muted truncate">{subtitle}</p>
+                </div>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted">
+                <span>{date || "Owner"}</span>
+                <span className="text-accent group-hover:translate-x-1 transition-transform">
+                    Open →
+                </span>
+            </div>
+        </button>
+    );
+});
 
-interface DashboardMembership {
-    loop_id: string;
-    loop_name: string;
-    role: string;
-    joined_at: string;
-}
+// Memoized stats card
+const StatCard = memo(function StatCard({
+    icon,
+    value,
+    label,
+}: {
+    icon: string;
+    value: number | string;
+    label: string;
+}) {
+    return (
+        <div className="p-6 rounded-2xl glass hover-lift">
+            <div className="text-2xl mb-2">{icon}</div>
+            <div className="text-3xl font-bold mb-1">{value}</div>
+            <div className="text-sm text-muted">{label}</div>
+        </div>
+    );
+});
 
-export default function Dashboard({ profile }: { profile: Profile }) {
+export default function Dashboard() {
     const router = useRouter();
-    const [projects, setProjects] = useState<DashboardProject[]>([]);
-    const [memberships, setMemberships] = useState<DashboardMembership[]>([]);
+    const user = useAuthStore((s) => s.user);
+    const { ownedLoops, joinedLoops, isLoading, fetchLoops, prefetchLoop } = useLoopsStore();
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [loading, setLoading] = useState(true);
-
-    const loadData = useCallback(async () => {
-        try {
-            const data = await api.getInit();
-            setProjects(data.projects || []);
-            setMemberships(data.memberships || []);
-        } catch (err) {
-            console.error("Failed to load dashboard:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
 
     useEffect(() => {
-        loadData();
-    }, [loadData]);
+        fetchLoops();
+    }, [fetchLoops]);
 
-    // Joined loops = memberships that are NOT in our projects
-    const joinedLoops = memberships.filter(
-        (m) => !projects.some((p) => p.name === m.loop_name)
+    // Filter joined loops (exclude owned)
+    const filteredJoinedLoops = joinedLoops.filter(
+        (m) => !ownedLoops.some((p) => p.name === m.loop_name)
     );
 
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         clearToken();
+        useAuthStore.getState().logout();
         window.location.reload();
-    };
+    }, []);
 
-    const handleLoopCreated = () => {
-        loadData();
-    };
+    const handleLoopCreated = useCallback(() => {
+        useLoopsStore.getState().invalidate();
+        setShowCreateModal(false);
+    }, []);
 
-    const displayName = profile.display_name || profile.username;
-    const avatarUrl = profile.avatar_url;
+    const handleLoopClick = useCallback((name: string) => {
+        router.push(`/loops/${encodeURIComponent(name)}`);
+    }, [router]);
+
+    const handleLoopHover = useCallback((name: string) => {
+        prefetchLoop(name);
+    }, [prefetchLoop]);
+
+    if (!user) return null;
+
+    const displayName = user.display_name || user.username;
+    const avatarUrl = user.avatar_url;
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -130,27 +174,21 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
                 {/* Stats cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="p-6 rounded-2xl glass hover-lift">
-                        <div className="text-2xl mb-2">💬</div>
-                        <div className="text-3xl font-bold mb-1">
-                            {loading ? "..." : projects.length}
-                        </div>
-                        <div className="text-sm text-muted">Owned Loops</div>
-                    </div>
-                    <div className="p-6 rounded-2xl glass hover-lift">
-                        <div className="text-2xl mb-2">🔗</div>
-                        <div className="text-3xl font-bold mb-1">
-                            {loading ? "..." : joinedLoops.length}
-                        </div>
-                        <div className="text-sm text-muted">Joined Loops</div>
-                    </div>
-                    <div className="p-6 rounded-2xl glass hover-lift">
-                        <div className="text-2xl mb-2">⚡</div>
-                        <div className="text-3xl font-bold mb-1">
-                            {loading ? "..." : projects.length + joinedLoops.length}
-                        </div>
-                        <div className="text-sm text-muted">Total Active</div>
-                    </div>
+                    <StatCard
+                        icon="💬"
+                        value={isLoading ? "..." : ownedLoops.length}
+                        label="Owned Loops"
+                    />
+                    <StatCard
+                        icon="🔗"
+                        value={isLoading ? "..." : filteredJoinedLoops.length}
+                        label="Joined Loops"
+                    />
+                    <StatCard
+                        icon="⚡"
+                        value={isLoading ? "..." : ownedLoops.length + filteredJoinedLoops.length}
+                        label="Total Active"
+                    />
                 </div>
 
                 {/* Quick Actions */}
@@ -182,46 +220,26 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                 </div>
 
                 {/* Joined Loops */}
-                {(loading || joinedLoops.length > 0) && (
+                {(isLoading || filteredJoinedLoops.length > 0) && (
                     <div className="mb-8">
                         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                             <span>🔗</span> Joined Loops
                         </h2>
-                        {loading ? (
+                        {isLoading ? (
                             <div className="flex justify-center py-12">
                                 <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {joinedLoops.map((membership) => (
-                                    <button
+                                {filteredJoinedLoops.map((membership) => (
+                                    <LoopCard
                                         key={membership.loop_id}
-                                        onClick={() => router.push(`/loops/${encodeURIComponent(membership.loop_name)}`)}
-                                        className="p-5 rounded-2xl glass hover:border-accent/40 transition-all text-left group hover-lift"
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
-                                                🔗
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-medium truncate">
-                                                    {membership.loop_name}
-                                                </h3>
-                                                <p className="text-xs text-muted truncate">
-                                                    {membership.role}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs text-muted">
-                                            <span>
-                                                Joined{" "}
-                                                {new Date(membership.joined_at).toLocaleDateString()}
-                                            </span>
-                                            <span className="text-accent group-hover:translate-x-1 transition-transform">
-                                                Open →
-                                            </span>
-                                        </div>
-                                    </button>
+                                        name={membership.loop_name}
+                                        subtitle={membership.role}
+                                        icon="🔗"
+                                        date={`Joined ${new Date(membership.joined_at).toLocaleDateString()}`}
+                                        onClick={() => handleLoopClick(membership.loop_name)}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -233,36 +251,24 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                     <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                         <span>💬</span> Your Loops
                     </h2>
-                    {loading ? (
+                    {isLoading ? (
                         <div className="flex justify-center py-12">
                             <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                         </div>
-                    ) : projects.length > 0 ? (
+                    ) : ownedLoops.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {projects.map((project) => (
-                                <button
+                            {ownedLoops.map((project) => (
+                                <div
                                     key={project.id}
-                                    onClick={() => router.push(`/loops/${encodeURIComponent(project.name)}`)}
-                                    className="p-5 rounded-2xl glass hover:border-accent/40 transition-all text-left group hover-lift"
+                                    onMouseEnter={() => handleLoopHover(project.name)}
                                 >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
-                                            💬
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-medium truncate">{project.name}</h3>
-                                            <p className="text-xs text-muted truncate">
-                                                Created by you
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs text-muted">
-                                        <span>Owner</span>
-                                        <span className="text-accent group-hover:translate-x-1 transition-transform">
-                                            Open →
-                                        </span>
-                                    </div>
-                                </button>
+                                    <LoopCard
+                                        name={project.name}
+                                        subtitle="Created by you"
+                                        icon="💬"
+                                        onClick={() => handleLoopClick(project.name)}
+                                    />
+                                </div>
                             ))}
                         </div>
                     ) : (
