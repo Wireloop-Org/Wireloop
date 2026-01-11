@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useSyncExternalStore } from "react";
+
+// Hydration-safe mounting hook (avoids setState in useEffect lint error)
+const emptySubscribe = () => () => { };
+const useHydrated = () => useSyncExternalStore(
+    emptySubscribe,
+    () => true,  // client: always true
+    () => false  // server: always false
+);
 
 export default function LandingPage() {
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const hydrated = useHydrated();
 
     const handleGitHubLogin = () => {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
         window.location.href = `${apiUrl}/api/auth/github`;
     };
 
-    if (!mounted) return null;
+    if (!hydrated) return null;
 
     return (
         <div className="relative min-h-screen flex flex-col overflow-hidden">
