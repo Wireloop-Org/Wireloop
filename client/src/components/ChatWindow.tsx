@@ -1,9 +1,48 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { api, createWebSocket, Message, LoopDetails, VerifyAccessResponse } from "@/lib/api";
+
+// Memoized message item to prevent re-renders of entire list
+const MessageItem = memo(function MessageItem({ msg }: { msg: Message }) {
+  return (
+    <div className="flex gap-4 group animate-fade-in-up">
+      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 relative border border-border">
+        {msg.sender_avatar ? (
+          <Image
+            src={msg.sender_avatar}
+            alt={msg.sender_username}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+            {msg.sender_username[0]?.toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="font-semibold text-sm text-foreground">
+            {msg.sender_username}
+          </span>
+          <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+            {new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+        <div className="text-foreground/90 leading-relaxed break-words">
+          {msg.content}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 interface ChatWindowProps {
   loopDetails: LoopDetails;
@@ -100,7 +139,7 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const content = message.trim();
     if (!content || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
@@ -112,14 +151,14 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
 
     // Clear input immediately (message will appear via WS broadcast)
     setMessage("");
-  };
+  }, [message]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
   const handleVerify = async () => {
     setVerifying(true);
@@ -189,8 +228,8 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
               {/* Status */}
               <div
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${verification.can_join
-                    ? "bg-emerald-500/10 text-emerald-500"
-                    : "bg-amber-500/10 text-amber-500"
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : "bg-amber-500/10 text-amber-500"
                   }`}
               >
                 {verification.can_join ? "✓ Eligible" : "✗ Not Eligible"}
@@ -203,8 +242,8 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
                     <div
                       key={i}
                       className={`p-3 rounded-lg border ${result.passed
-                          ? "bg-emerald-500/5 border-emerald-500/20"
-                          : "bg-card border-border"
+                        ? "bg-emerald-500/5 border-emerald-500/20"
+                        : "bg-card border-border"
                         }`}
                     >
                       <div className="flex items-center gap-2 text-sm">
@@ -277,8 +316,8 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
         <div className="ml-auto flex items-center gap-2">
           <span
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-colors ${connected
-                ? "bg-emerald-500/10 text-emerald-500"
-                : "bg-secondary text-muted"
+              ? "bg-emerald-500/10 text-emerald-500"
+              : "bg-secondary text-muted"
               }`}
           >
             <span
@@ -312,39 +351,7 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
         ) : (
           <div className="space-y-6">
             {messages.map((msg) => (
-              <div key={msg.id} className="flex gap-4 group animate-fade-in-up">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 relative border border-border">
-                  {msg.sender_avatar ? (
-                    <Image
-                      src={msg.sender_avatar}
-                      alt={msg.sender_username}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-muted">
-                      {msg.sender_username[0]?.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-semibold text-sm text-foreground">
-                      {msg.sender_username}
-                    </span>
-                    <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  <div className="text-foreground/90 leading-relaxed break-words">
-                    {msg.content}
-                  </div>
-                </div>
-              </div>
+              <MessageItem key={msg.id} msg={msg} />
             ))}
             <div ref={messagesEndRef} />
           </div>
