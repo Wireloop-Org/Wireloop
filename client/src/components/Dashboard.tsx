@@ -187,7 +187,7 @@ export default function Dashboard() {
                     <StatCard
                         icon="⚡"
                         value={isLoading ? "..." : ownedLoops.length + filteredJoinedLoops.length}
-                        label="Total Active"
+                        label="Total Loops"
                     />
                 </div>
 
