@@ -133,22 +133,22 @@ export default function CreateLoopModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[85vh] bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-2xl max-h-[85vh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3">
             {step === "set-rules" && (
               <button
                 onClick={handleBack}
-                className="p-1 hover:bg-zinc-800 rounded-lg transition-colors"
+                className="p-1 hover:bg-secondary rounded-lg transition-colors"
               >
                 <svg
-                  className="w-5 h-5 text-zinc-400"
+                  className="w-5 h-5 text-muted"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -162,16 +162,16 @@ export default function CreateLoopModal({
                 </svg>
               </button>
             )}
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-xl font-semibold text-foreground">
               {step === "select-repo" ? "Select Repository" : "Configure Loop"}
             </h2>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-secondary rounded-lg transition-colors"
           >
             <svg
-              className="w-5 h-5 text-zinc-400"
+              className="w-5 h-5 text-muted hover:text-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -187,13 +187,13 @@ export default function CreateLoopModal({
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+          <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
             {error}
           </div>
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
           {step === "select-repo" ? (
             <>
               {/* Search */}
@@ -203,17 +203,17 @@ export default function CreateLoopModal({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search repositories..."
-                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
                 />
               </div>
 
               {/* Repos list */}
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredRepos.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500">
+                <div className="text-center py-12 text-muted">
                   {searchQuery
                     ? "No repositories found"
                     : "No repositories available"}
@@ -224,9 +224,9 @@ export default function CreateLoopModal({
                     <button
                       key={repo.id}
                       onClick={() => handleSelectRepo(repo)}
-                      className="w-full flex items-center gap-4 p-4 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-all text-left group"
+                      className="w-full flex items-center gap-4 p-4 bg-card hover:bg-secondary/40 border border-border hover:border-border/80 rounded-xl transition-all text-left group hover-lift"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-zinc-700 overflow-hidden relative flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-secondary overflow-hidden relative flex-shrink-0 border border-border">
                         <Image
                           src={repo.owner.avatar_url}
                           alt={repo.owner.login}
@@ -237,24 +237,24 @@ export default function CreateLoopModal({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">
+                          <span className="font-medium truncate text-foreground">
                             {repo.full_name}
                           </span>
                           {repo.private && (
-                            <span className="px-2 py-0.5 text-xs bg-zinc-700 rounded-full">
+                            <span className="px-2 py-0.5 text-xs bg-secondary text-muted rounded-full">
                               Private
                             </span>
                           )}
                         </div>
                         {repo.description && (
-                          <p className="text-sm text-zinc-500 truncate mt-1">
+                          <p className="text-sm text-muted truncate mt-1">
                             {repo.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted">
                           {repo.language && (
                             <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                              <span className="w-2 h-2 rounded-full bg-accent" />
                               {repo.language}
                             </span>
                           )}
@@ -267,7 +267,7 @@ export default function CreateLoopModal({
                         </div>
                       </div>
                       <svg
-                        className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400 transition-colors"
+                        className="w-5 h-5 text-muted group-hover:text-foreground transition-colors"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -288,8 +288,8 @@ export default function CreateLoopModal({
             <>
               {/* Selected Repo */}
               {selectedRepo && (
-                <div className="flex items-center gap-4 p-4 bg-zinc-800/30 border border-zinc-700 rounded-xl mb-6">
-                  <div className="w-12 h-12 rounded-lg bg-zinc-700 overflow-hidden relative flex-shrink-0">
+                <div className="flex items-center gap-4 p-4 bg-secondary/20 border border-border rounded-xl mb-6">
+                  <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden relative flex-shrink-0 border border-border">
                     <Image
                       src={selectedRepo.owner.avatar_url}
                       alt={selectedRepo.owner.login}
@@ -299,8 +299,8 @@ export default function CreateLoopModal({
                     />
                   </div>
                   <div>
-                    <div className="font-medium">{selectedRepo.full_name}</div>
-                    <div className="text-sm text-zinc-500">
+                    <div className="font-medium text-foreground">{selectedRepo.full_name}</div>
+                    <div className="text-sm text-muted">
                       {selectedRepo.description || "No description"}
                     </div>
                   </div>
@@ -309,7 +309,7 @@ export default function CreateLoopModal({
 
               {/* Loop Name */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                <label className="block text-sm font-medium text-muted mb-2">
                   Loop Name
                 </label>
                 <input
@@ -317,19 +317,19 @@ export default function CreateLoopModal({
                   value={loopName}
                   onChange={(e) => setLoopName(e.target.value)}
                   placeholder="Enter loop name"
-                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent transition-colors"
                 />
               </div>
 
               {/* Rules */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-zinc-300">
+                  <label className="block text-sm font-medium text-muted">
                     Access Rules
                   </label>
                   <button
                     onClick={handleAddRule}
-                    className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                    className="text-sm text-accent hover:text-accent-hover transition-colors font-medium"
                   >
                     + Add Rule
                   </button>
@@ -339,20 +339,20 @@ export default function CreateLoopModal({
                   {rules.map((rule, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-3 p-4 bg-zinc-800/30 border border-zinc-800 rounded-xl"
+                      className="flex items-center gap-3 p-4 bg-secondary/20 border border-border rounded-xl"
                     >
                       <select
                         value={rule.criteria_type}
                         onChange={(e) =>
                           handleRuleChange(index, "criteria_type", e.target.value)
                         }
-                        className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                        className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:border-accent transition-colors"
                       >
                         <option value="PR_COUNT">Merged PRs</option>
                         <option value="COMMIT_COUNT">Commits</option>
                         <option value="ISSUE_COUNT">Issues Created</option>
                       </select>
-                      <span className="text-zinc-500">≥</span>
+                      <span className="text-muted">≥</span>
                       <input
                         type="number"
                         min="1"
@@ -360,12 +360,12 @@ export default function CreateLoopModal({
                         onChange={(e) =>
                           handleRuleChange(index, "threshold", e.target.value)
                         }
-                        className="w-20 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-center focus:outline-none focus:border-indigo-500"
+                        className="w-20 px-3 py-2 bg-card border border-border rounded-lg text-foreground text-center focus:outline-none focus:border-accent transition-colors"
                       />
                       {rules.length > 1 && (
                         <button
                           onClick={() => handleRemoveRule(index)}
-                          className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                          className="p-2 text-muted hover:text-red-400 transition-colors"
                         >
                           <svg
                             className="w-4 h-4"
@@ -386,7 +386,7 @@ export default function CreateLoopModal({
                   ))}
                 </div>
 
-                <p className="text-xs text-zinc-500 mt-3">
+                <p className="text-xs text-muted mt-3">
                   Users must meet ALL rules to join this loop
                 </p>
               </div>
@@ -396,17 +396,17 @@ export default function CreateLoopModal({
 
         {/* Footer */}
         {step === "set-rules" && (
-          <div className="px-6 py-4 border-t border-zinc-800 flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-border bg-card/50 flex justify-end gap-3">
             <button
               onClick={handleClose}
-              className="px-6 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors"
+              className="px-6 py-2.5 rounded-xl border border-border text-muted hover:text-foreground hover:bg-secondary transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleCreate}
               disabled={creating || !loopName}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover-lift"
             >
               {creating ? (
                 <>

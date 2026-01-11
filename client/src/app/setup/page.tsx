@@ -83,28 +83,30 @@ export default function ProfileSetup() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0c0c0f]">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none opacity-40" />
+
+      <div className="w-full max-w-md relative z-10 animate-scale-in">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
-          <p className="text-zinc-500">Let others know who you are</p>
+          <h1 className="text-3xl font-bold mb-2 text-foreground">Complete Your Profile</h1>
+          <p className="text-muted">Let others know who you are</p>
         </div>
 
         {/* Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8"
+          className="bg-card border border-border rounded-2xl p-8 shadow-xl"
         >
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
               {error}
             </div>
           )}
@@ -116,7 +118,7 @@ export default function ProfileSetup() {
               onClick={handleAvatarClick}
               className="relative group"
             >
-              <div className="w-28 h-28 rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700 group-hover:border-indigo-500 transition-colors relative">
+              <div className="w-28 h-28 rounded-full overflow-hidden bg-secondary border-2 border-border group-hover:border-accent transition-colors relative shadow-lg">
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
@@ -126,7 +128,7 @@ export default function ProfileSetup() {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl text-zinc-600">
+                  <div className="w-full h-full flex items-center justify-center text-4xl text-muted">
                     {displayName?.[0]?.toUpperCase() ||
                       profile?.username?.[0]?.toUpperCase() ||
                       "?"}
@@ -162,14 +164,14 @@ export default function ProfileSetup() {
               onChange={handleFileChange}
               className="hidden"
             />
-            <p className="text-xs text-zinc-500 mt-3">
+            <p className="text-xs text-muted mt-3">
               Click to upload (max 200KB)
             </p>
           </div>
 
           {/* Display Name */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-muted mb-2">
               Display Name
             </label>
             <input
@@ -177,10 +179,10 @@ export default function ProfileSetup() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
-              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
               placeholder="Your name"
             />
-            <p className="text-xs text-zinc-500 mt-1 text-right">
+            <p className="text-xs text-muted mt-1 text-right">
               {displayName.length}/50
             </p>
           </div>
@@ -190,14 +192,14 @@ export default function ProfileSetup() {
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="flex-1 px-6 py-3 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors"
+              className="flex-1 px-6 py-3 rounded-xl border border-border text-muted hover:text-foreground hover:bg-secondary transition-colors"
             >
               Skip
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover-lift shadow-lg shadow-accent/20"
             >
               {saving ? (
                 <>
@@ -212,9 +214,9 @@ export default function ProfileSetup() {
         </form>
 
         {/* Username note */}
-        <p className="text-center text-xs text-zinc-500 mt-6">
+        <p className="text-center text-xs text-muted mt-6">
           Signed in as{" "}
-          <span className="text-zinc-300">@{profile?.username}</span>
+          <span className="text-foreground font-medium">@{profile?.username}</span>
         </p>
       </div>
     </div>

@@ -94,22 +94,24 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0c0c0f]">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f]">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none opacity-40" />
+
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
               <svg
                 className="w-4 h-4 text-white"
                 fill="none"
@@ -124,12 +126,12 @@ export default function ProfilePage() {
                 />
               </svg>
             </div>
-            <span className="font-semibold">Wireloop</span>
+            <span className="font-semibold text-foreground">Wireloop</span>
           </button>
 
           <button
             onClick={handleLogout}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors font-medium"
           >
             Sign out
           </button>
@@ -137,14 +139,14 @@ export default function ProfilePage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-2xl mx-auto px-6 py-12">
+      <main className="max-w-2xl mx-auto px-6 py-12 relative z-10">
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push("/")}
-            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-secondary rounded-lg transition-colors"
           >
             <svg
-              className="w-5 h-5 text-zinc-400"
+              className="w-5 h-5 text-muted hover:text-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -157,27 +159,27 @@ export default function ProfilePage() {
               />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold">Profile Settings</h1>
+          <h1 className="text-2xl font-bold text-foreground">Profile Settings</h1>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8"
+          className="bg-card border border-border rounded-2xl p-8 shadow-xl animate-scale-in"
         >
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm">
+            <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-500 text-sm">
               {success}
             </div>
           )}
 
           {/* Avatar */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-zinc-300 mb-4">
+            <label className="block text-sm font-medium text-muted mb-4">
               Profile Photo
             </label>
             <div className="flex items-center gap-6">
@@ -186,7 +188,7 @@ export default function ProfilePage() {
                 onClick={handleAvatarClick}
                 className="relative group"
               >
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 border-2 border-zinc-700 group-hover:border-indigo-500 transition-colors relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-secondary border-2 border-border group-hover:border-accent transition-colors relative">
                   {avatarPreview ? (
                     <Image
                       src={avatarPreview}
@@ -196,7 +198,7 @@ export default function ProfilePage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl text-zinc-600">
+                    <div className="w-full h-full flex items-center justify-center text-2xl text-muted">
                       {displayName?.[0]?.toUpperCase() ||
                         profile?.username?.[0]?.toUpperCase() ||
                         "?"}
@@ -233,15 +235,15 @@ export default function ProfilePage() {
                 className="hidden"
               />
               <div className="text-sm">
-                <p className="text-zinc-300">Upload a new photo</p>
-                <p className="text-zinc-500">JPG or PNG. Max 200KB.</p>
+                <p className="text-foreground">Upload a new photo</p>
+                <p className="text-muted">JPG or PNG. Max 200KB.</p>
               </div>
             </div>
           </div>
 
           {/* Display Name */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-muted mb-2">
               Display Name
             </label>
             <input
@@ -249,20 +251,20 @@ export default function ProfilePage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
-              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
               placeholder="Your name"
             />
           </div>
 
           {/* Username (read-only) */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-muted mb-2">
               Username
             </label>
-            <div className="px-4 py-3 bg-zinc-800/30 border border-zinc-700/50 rounded-xl text-zinc-500">
+            <div className="px-4 py-3 bg-secondary/50 border border-border rounded-xl text-muted">
               @{profile?.username}
             </div>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-muted mt-1">
               Username is linked to your GitHub account
             </p>
           </div>
@@ -272,7 +274,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover-lift"
             >
               {saving ? (
                 <>

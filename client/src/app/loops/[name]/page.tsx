@@ -31,7 +31,7 @@ export default function LoopPage() {
   const [loopData, setLoopData] = useState<LoopFullData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track if initial messages were passed to chat
   const initialMessagesRef = useRef<Message[] | null>(null);
 
@@ -106,10 +106,10 @@ export default function LoopPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0c0c0f]">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-zinc-500">Loading loop...</span>
+          <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muted">Loading loop...</span>
         </div>
       </div>
     );
@@ -118,20 +118,20 @@ export default function LoopPage() {
   // Error state
   if (error || !initData) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0c0c0f]">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-zinc-800/50 flex items-center justify-center text-4xl mx-auto mb-6">
+          <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-4xl mx-auto mb-6">
             {error === "Loop not found" ? "🔍" : "⚠️"}
           </div>
-          <h2 className="text-2xl font-bold mb-3">{error || "Something went wrong"}</h2>
-          <p className="text-zinc-500 mb-6">
-            {error === "Loop not found" 
+          <h2 className="text-2xl font-bold mb-3 text-foreground">{error || "Something went wrong"}</h2>
+          <p className="text-muted mb-6">
+            {error === "Loop not found"
               ? "The loop you are looking for does not exist."
               : "Please try again or go back to dashboard."}
           </p>
           <button
             onClick={() => router.push("/")}
-            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors"
+            className="px-6 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors"
           >
             Go to Dashboard
           </button>
@@ -145,29 +145,29 @@ export default function LoopPage() {
   const avatarUrl = profile.avatar_url;
 
   return (
-    <div className="h-screen bg-[#0c0c0f] flex overflow-hidden">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 border-r border-zinc-800 bg-zinc-900/30 flex flex-col h-full">
+      <aside className="w-72 border-r border-border bg-card/50 flex flex-col h-full z-20">
         {/* Logo */}
-        <div className="flex-shrink-0 p-4 border-b border-zinc-800">
+        <div className="flex-shrink-0 p-4 border-b border-border">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <span className="font-semibold text-lg">Wireloop</span>
+            <span className="font-semibold text-lg text-foreground tracking-tight">Wireloop</span>
           </button>
         </div>
 
         {/* Back to Dashboard */}
-        <div className="flex-shrink-0 p-4 border-b border-zinc-800">
+        <div className="flex-shrink-0 p-4 border-b border-border">
           <button
             onClick={() => router.push("/")}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -187,28 +187,28 @@ export default function LoopPage() {
         </div>
 
         {/* User */}
-        <div className="flex-shrink-0 p-4 border-t border-zinc-800">
+        <div className="flex-shrink-0 p-4 border-t border-border bg-card">
           <button
             onClick={() => router.push("/profile")}
-            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-800/50 transition-colors"
+            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary transition-colors group"
           >
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-zinc-800 relative">
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-secondary relative border border-border group-hover:border-accent/50 transition-colors">
               {avatarUrl ? (
                 <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm text-zinc-500">
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted">
                   {displayName[0]?.toUpperCase()}
                 </div>
               )}
             </div>
-            <div className="flex-1 text-left">
-              <div className="text-sm font-medium">{displayName}</div>
-              <div className="text-xs text-zinc-500">@{profile.username}</div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
+              <div className="text-xs text-muted truncate">@{profile.username}</div>
             </div>
           </button>
           <button
             onClick={handleLogout}
-            className="w-full mt-2 px-4 py-2 text-sm text-zinc-500 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+            className="w-full mt-2 px-4 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors font-medium"
           >
             Sign out
           </button>
@@ -216,9 +216,9 @@ export default function LoopPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
         {loopData ? (
-          <ChatWindow 
+          <ChatWindow
             loopDetails={{
               id: loopData.id,
               name: loopData.name,
@@ -232,13 +232,13 @@ export default function LoopPage() {
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {/* Members Panel (collapsible) */}
         {loopData && loopData.members.length > 0 && (
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative z-30">
             <MembersPanel members={loopData.members} />
           </div>
         )}
@@ -251,16 +251,16 @@ function MembersPanel({ members }: { members: LoopFullData["members"] }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-900/30">
+    <div className="border-t border-border bg-card/80 backdrop-blur-md">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-6 py-3 flex items-center justify-between text-sm hover:bg-zinc-800/30 transition-colors"
+        className="w-full px-6 py-3 flex items-center justify-between text-sm hover:bg-secondary/50 transition-colors"
       >
-        <span className="text-zinc-400">
+        <span className="text-muted font-medium">
           {members.length} Member{members.length !== 1 ? "s" : ""}
         </span>
         <svg
-          className={`w-4 h-4 text-zinc-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-muted transition-transform ${expanded ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -270,20 +270,20 @@ function MembersPanel({ members }: { members: LoopFullData["members"] }) {
       </button>
 
       {expanded && (
-        <div className="px-6 pb-4 flex flex-wrap gap-3">
+        <div className="px-6 pb-4 flex flex-wrap gap-3 animate-fade-in-up">
           {members.map((member) => (
-            <div key={member.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800/50">
-              <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-700 relative">
+            <div key={member.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-background relative border border-border/50">
                 {member.avatar_url ? (
                   <Image src={member.avatar_url} alt={member.username} fill className="object-cover" unoptimized />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs">
+                  <div className="w-full h-full flex items-center justify-center text-xs text-muted">
                     {member.username[0]?.toUpperCase()}
                   </div>
                 )}
               </div>
-              <span className="text-sm text-zinc-300">{member.display_name || member.username}</span>
-              {member.role === "owner" && <span className="text-xs text-amber-500">👑</span>}
+              <span className="text-sm text-foreground">{member.display_name || member.username}</span>
+              {member.role === "owner" && <span className="text-xs text-amber-500" title="Owner">👑</span>}
             </div>
           ))}
         </div>
