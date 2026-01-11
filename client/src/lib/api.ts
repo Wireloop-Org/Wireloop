@@ -33,6 +33,28 @@ export function invalidateLoopCache(loopName: string): void {
 // Prefetch cache - stores promises for in-flight requests
 const prefetchCache = new Map<string, Promise<unknown>>();
 
+// ============================================================================
+// PERFORMANCE: Request deduplication - prevent duplicate in-flight requests
+// ============================================================================
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+function deduplicatedRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
+  // If request is already in flight, return the existing promise
+  const existing = inFlightRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
+  // Create new request and store it
+  const promise = requestFn().finally(() => {
+    // Clean up after request completes
+    inFlightRequests.delete(key);
+  });
+
+  inFlightRequests.set(key, promise);
+  return promise;
+}
+
 // Get stored auth token
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -247,14 +269,18 @@ export interface LoopFullData {
 
 // API functions
 export const api = {
-  
+
   // Get ALL initial data in ONE request (profile + projects + memberships)
   getInit: async (): Promise<InitData> => {
     const cached = getCached<InitData>(INIT_CACHE_KEY);
     if (cached) return cached;
-    const data = await apiRequest<InitData>("/api/init");
-    setCache(INIT_CACHE_KEY, data);
-    return data;
+
+    // Use deduplication to prevent multiple concurrent init requests
+    return deduplicatedRequest(INIT_CACHE_KEY, async () => {
+      const data = await apiRequest<InitData>("/api/init");
+      setCache(INIT_CACHE_KEY, data);
+      return data;
+    });
   },
 
   // Get loop details + messages in ONE request
@@ -262,16 +288,20 @@ export const api = {
     const cacheKey = LOOP_CACHE_PREFIX + name;
     const cached = getCached<LoopFullData>(cacheKey);
     if (cached) return cached;
-    const data = await apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`);
-    setCache(cacheKey, data);
-    return data;
+
+    // Use deduplication to prevent multiple concurrent requests for same loop
+    return deduplicatedRequest(cacheKey, async () => {
+      const data = await apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`);
+      setCache(cacheKey, data);
+      return data;
+    });
   },
 
   // Prefetch loop data on hover (fire-and-forget)
   prefetchLoop: (name: string): void => {
     const cacheKey = LOOP_CACHE_PREFIX + name;
     if (getCached(cacheKey) || prefetchCache.has(cacheKey)) return;
-    
+
     const promise = apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`)
       .then(data => {
         setCache(cacheKey, data);
@@ -281,7 +311,7 @@ export const api = {
       .catch(() => {
         prefetchCache.delete(cacheKey);
       });
-    
+
     prefetchCache.set(cacheKey, promise);
   },
 
@@ -299,7 +329,7 @@ export const api = {
         created_at: initData.profile.created_at,
       };
     }
-    
+
     const cached = getCached<Profile>("profile");
     if (cached) return cached;
     const data = await apiRequest<Profile>("/api/profile");
