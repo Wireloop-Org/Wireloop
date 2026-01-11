@@ -2,51 +2,68 @@
 
 :root {
   /* Light Mode - Warm & Bright */
-  --background: #fafaf9; /* Stone 50 - Off white */
-  --foreground: #1c1917; /* Stone 900 */
-  
+  --background: #fafaf9;
+  /* Stone 50 - Off white */
+  --foreground: #1c1917;
+  /* Stone 900 */
+
   --card: #ffffff;
-  --card-border: #e7e5e4; /* Stone 200 */
-  --card-hover: #f5f5f4; /* Stone 100 */
-  
-  --accent: #f97316; /* Orange 500 - Warm accent */
-  --accent-hover: #ea580c; /* Orange 600 */
+  --card-border: #e7e5e4;
+  /* Stone 200 */
+  --card-hover: #f5f5f4;
+  /* Stone 100 */
+
+  --accent: #f97316;
+  /* Orange 500 - Warm accent */
+  --accent-hover: #ea580c;
+  /* Orange 600 */
   --accent-foreground: #ffffff;
-  
-  --secondary: #e7e5e4; 
+
+  --secondary: #e7e5e4;
   --secondary-foreground: #44403c;
-  
-  --muted: #78716c; /* Stone 500 */
+
+  --muted: #78716c;
+  /* Stone 500 */
   --border: #e7e5e4;
-  
+
   /* Gradients */
-  --gradient-start: #ffedd5; /* Orange 100 */
-  --gradient-end: #ffe4e6; /* Rose 100 */
+  --gradient-start: #ffedd5;
+  /* Orange 100 */
+  --gradient-end: #ffe4e6;
+  /* Rose 100 */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     /* Dark Mode - Greyish/Premium */
-    --background: #18181b; /* Zinc 950 - Greyish dark */
-    --foreground: #fafafa; /* Zinc 50 */
-    
-    --card: #27272a; /* Zinc 800 */
-    --card-border: #3f3f46; /* Zinc 700 */
+    --background: #18181b;
+    /* Zinc 950 - Greyish dark */
+    --foreground: #fafafa;
+    /* Zinc 50 */
+
+    --card: #27272a;
+    /* Zinc 800 */
+    --card-border: #3f3f46;
+    /* Zinc 700 */
     --card-hover: #3f3f46;
-    
-    --accent: #6366f1; /* Indigo 500 - tech/clean feel for dark mode */
+
+    --accent: #6366f1;
+    /* Indigo 500 - tech/clean feel for dark mode */
     --accent-hover: #818cf8;
     --accent-foreground: #ffffff;
-    
+
     --secondary: #27272a;
     --secondary-foreground: #fafafa;
-    
-    --muted: #a1a1aa; /* Zinc 400 */
+
+    --muted: #a1a1aa;
+    /* Zinc 400 */
     --border: #27272a;
-    
+
     /* Gradients */
-    --gradient-start: #1e1b4b; /* Indigo 950 */
-    --gradient-end: #312e81; /* Indigo 900 */
+    --gradient-start: #1e1b4b;
+    /* Indigo 950 */
+    --gradient-end: #312e81;
+    /* Indigo 900 */
   }
 }
 
@@ -63,7 +80,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
-  
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -84,7 +101,7 @@ body {
 }
 
 .bg-gradient-mesh {
-  background: 
+  background:
     radial-gradient(at 0% 0%, var(--gradient-start) 0px, transparent 50%),
     radial-gradient(at 100% 0%, var(--gradient-end) 0px, transparent 50%);
   filter: blur(80px);
@@ -103,19 +120,102 @@ body {
 
 .hover-lift:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
-/* Animations from previous file, kept common */
+/* Animations - GPU accelerated */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale3d(0.95, 0.95, 1);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-scale-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hover-lift:hover {
+    transform: none;
+  }
+}
+
+/* Performance: Use GPU layer for frequently animated elements */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Smooth scrolling with performance */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
