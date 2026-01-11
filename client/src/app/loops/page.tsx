@@ -111,8 +111,8 @@ export default function BrowseLoopsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0c0c0f]">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -123,16 +123,18 @@ export default function BrowseLoopsPage() {
   const avatarUrl = profile.avatar_url;
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f]">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none opacity-40" />
+
       {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <button
               onClick={() => router.push("/")}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
                 <svg
                   className="w-4 h-4 text-white"
                   fill="none"
@@ -147,17 +149,17 @@ export default function BrowseLoopsPage() {
                   />
                 </svg>
               </div>
-              <span className="font-semibold">Wireloop</span>
+              <span className="font-semibold text-foreground tracking-tight">Wireloop</span>
             </button>
 
             <nav className="flex items-center gap-1">
               <button
                 onClick={() => router.push("/")}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors"
               >
                 Dashboard
               </button>
-              <button className="px-4 py-2 text-sm text-white bg-zinc-800 rounded-lg">
+              <button className="px-4 py-2 text-sm text-foreground bg-secondary rounded-lg font-medium">
                 Browse Loops
               </button>
             </nav>
@@ -166,9 +168,9 @@ export default function BrowseLoopsPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/profile")}
-              className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors"
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 relative">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-secondary relative border border-border">
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
@@ -178,7 +180,7 @@ export default function BrowseLoopsPage() {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-sm text-zinc-500">
+                  <div className="w-full h-full flex items-center justify-center text-sm text-muted">
                     {displayName[0]?.toUpperCase()}
                   </div>
                 )}
@@ -186,7 +188,7 @@ export default function BrowseLoopsPage() {
             </button>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors font-medium"
             >
               Sign out
             </button>
@@ -194,14 +196,14 @@ export default function BrowseLoopsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
         <div className="flex gap-8">
           {/* Loops Grid */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h1 className="text-3xl font-bold mb-2">Discover Loops</h1>
-                <p className="text-zinc-500">
+                <h1 className="text-3xl font-bold mb-2 text-foreground">Discover Loops</h1>
+                <p className="text-muted">
                   Find merit-based communities and join the conversation
                 </p>
               </div>
@@ -209,9 +211,9 @@ export default function BrowseLoopsPage() {
 
             {/* Search */}
             <div className="mb-6">
-              <div className="relative">
+              <div className="relative group">
                 <svg
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted group-focus-within:text-accent transition-colors"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -228,19 +230,19 @@ export default function BrowseLoopsPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search loops..."
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-900/50 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full pl-12 pr-4 py-3 bg-secondary/50 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-all"
                 />
               </div>
             </div>
 
             {/* Loops Grid */}
             {filteredLoops.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl mx-auto mb-4">
+              <div className="text-center py-20 rounded-2xl border border-dashed border-border/50 bg-card/20">
+                <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl mx-auto mb-4">
                   🔍
                 </div>
-                <h3 className="text-lg font-medium mb-2">No loops found</h3>
-                <p className="text-zinc-500">
+                <h3 className="text-lg font-medium mb-2 text-foreground">No loops found</h3>
+                <p className="text-muted">
                   {searchQuery
                     ? "Try a different search term"
                     : "Be the first to create a loop!"}
@@ -252,19 +254,19 @@ export default function BrowseLoopsPage() {
                   <button
                     key={loop.id}
                     onClick={() => handleSelectLoop(loop)}
-                    className={`p-5 rounded-2xl border text-left transition-all ${selectedLoop?.id === loop.id
-                        ? "bg-indigo-600/10 border-indigo-500/30"
-                        : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                    className={`p-5 rounded-2xl border text-left transition-all hover-lift ${selectedLoop?.id === loop.id
+                      ? "bg-accent/5 border-accent/20 shadow-lg shadow-accent/5"
+                      : "bg-card hover:bg-secondary/40 border-border hover:border-border/80"
                       }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-2xl">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent/20 to-purple-500/20 flex items-center justify-center text-2xl">
                         💬
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{loop.name}</h3>
+                        <h3 className="font-semibold truncate text-foreground">{loop.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="w-5 h-5 rounded-full overflow-hidden bg-zinc-700 relative">
+                          <div className="w-5 h-5 rounded-full overflow-hidden bg-secondary relative border border-border/50">
                             {loop.owner_avatar ? (
                               <Image
                                 src={loop.owner_avatar}
@@ -274,16 +276,16 @@ export default function BrowseLoopsPage() {
                                 unoptimized
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs">
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted">
                                 {loop.owner_username[0]?.toUpperCase()}
                               </div>
                             )}
                           </div>
-                          <span className="text-sm text-zinc-500">
+                          <span className="text-sm text-muted">
                             {loop.owner_username}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500">
+                        <div className="flex items-center gap-4 mt-3 text-xs text-muted">
                           <span className="flex items-center gap-1">
                             <svg
                               className="w-4 h-4"
@@ -313,13 +315,13 @@ export default function BrowseLoopsPage() {
           <div className="w-96 flex-shrink-0">
             <div className="sticky top-24">
               {selectedLoop ? (
-                <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800">
-                  <h2 className="text-xl font-bold mb-4">{selectedLoop.name}</h2>
+                <div className="p-6 rounded-2xl bg-card border border-border shadow-xl animate-scale-in">
+                  <h2 className="text-xl font-bold mb-4 text-foreground">{selectedLoop.name}</h2>
 
                   {verifying ? (
                     <div className="flex flex-col items-center py-8">
-                      <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-                      <p className="text-zinc-500">
+                      <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mb-4" />
+                      <p className="text-muted">
                         Verifying your contributions...
                       </p>
                     </div>
@@ -328,10 +330,10 @@ export default function BrowseLoopsPage() {
                       {/* Status Badge */}
                       <div
                         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm mb-6 ${verification.is_member
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : verification.can_join
-                              ? "bg-indigo-500/10 text-indigo-400"
-                              : "bg-amber-500/10 text-amber-400"
+                          ? "bg-emerald-500/10 text-emerald-500"
+                          : verification.can_join
+                            ? "bg-emerald-500/10 text-emerald-500"
+                            : "bg-amber-500/10 text-amber-500"
                           }`}
                       >
                         {verification.is_member ? (
@@ -385,31 +387,31 @@ export default function BrowseLoopsPage() {
                       {/* Requirements */}
                       {verification.results.length > 0 && (
                         <div className="space-y-3 mb-6">
-                          <h3 className="text-sm font-medium text-zinc-400">
+                          <h3 className="text-sm font-medium text-muted">
                             Requirements
                           </h3>
                           {verification.results.map((result, i) => (
                             <div
                               key={i}
                               className={`p-3 rounded-lg border ${result.passed
-                                  ? "bg-emerald-500/5 border-emerald-500/20"
-                                  : "bg-zinc-800/50 border-zinc-700"
+                                ? "bg-emerald-500/5 border-emerald-500/20"
+                                : "bg-card border-border"
                                 }`}
                             >
                               <div className="flex items-center gap-2">
                                 {result.passed ? (
                                   <span className="text-emerald-500">✓</span>
                                 ) : (
-                                  <span className="text-zinc-500">○</span>
+                                  <span className="text-muted">○</span>
                                 )}
-                                <span className="text-sm">{result.message}</span>
+                                <span className="text-sm text-foreground">{result.message}</span>
                               </div>
                               <div className="mt-2 flex items-center gap-2">
-                                <div className="flex-1 h-1.5 rounded-full bg-zinc-700 overflow-hidden">
+                                <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all ${result.passed
-                                        ? "bg-emerald-500"
-                                        : "bg-indigo-500"
+                                      ? "bg-emerald-500"
+                                      : "bg-accent"
                                       }`}
                                     style={{
                                       width: `${Math.min(
@@ -419,7 +421,7 @@ export default function BrowseLoopsPage() {
                                     }}
                                   />
                                 </div>
-                                <span className="text-xs text-zinc-500">
+                                <span className="text-xs text-muted">
                                   {result.actual}/{result.required}
                                 </span>
                               </div>
@@ -434,7 +436,7 @@ export default function BrowseLoopsPage() {
                           onClick={() =>
                             router.push(`/loops/${selectedLoop.name}`)
                           }
-                          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors"
+                          className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors hover-lift"
                         >
                           Open Loop
                         </button>
@@ -442,14 +444,14 @@ export default function BrowseLoopsPage() {
                         <button
                           onClick={handleJoin}
                           disabled={joining}
-                          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors disabled:opacity-50"
+                          className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors disabled:opacity-50 hover-lift"
                         >
                           {joining ? "Joining..." : "Join Loop"}
                         </button>
                       ) : (
                         <button
                           disabled
-                          className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-500 font-medium cursor-not-allowed"
+                          className="w-full py-3 rounded-xl bg-secondary text-muted font-medium cursor-not-allowed"
                         >
                           Cannot Join Yet
                         </button>
@@ -458,12 +460,12 @@ export default function BrowseLoopsPage() {
                   ) : null}
                 </div>
               ) : (
-                <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl mx-auto mb-4">
+                <div className="p-8 rounded-2xl bg-card border border-dashed border-border text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl mx-auto mb-4">
                     👈
                   </div>
-                  <h3 className="font-medium mb-2">Select a Loop</h3>
-                  <p className="text-sm text-zinc-500">
+                  <h3 className="font-medium mb-2 text-foreground">Select a Loop</h3>
+                  <p className="text-sm text-muted">
                     Click on a loop to verify your eligibility and join
                   </p>
                 </div>

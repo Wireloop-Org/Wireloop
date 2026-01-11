@@ -1,9 +1,48 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { api, createWebSocket, Message, LoopDetails, VerifyAccessResponse } from "@/lib/api";
+
+// Memoized message item to prevent re-renders of entire list
+const MessageItem = memo(function MessageItem({ msg }: { msg: Message }) {
+  return (
+    <div className="flex gap-4 group animate-fade-in-up">
+      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 relative border border-border">
+        {msg.sender_avatar ? (
+          <Image
+            src={msg.sender_avatar}
+            alt={msg.sender_username}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+            {msg.sender_username[0]?.toUpperCase()}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="font-semibold text-sm text-foreground">
+            {msg.sender_username}
+          </span>
+          <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+            {new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+        <div className="text-foreground/90 leading-relaxed break-words">
+          {msg.content}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 interface ChatWindowProps {
   loopDetails: LoopDetails;
@@ -100,7 +139,7 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const content = message.trim();
     if (!content || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
@@ -112,14 +151,14 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
 
     // Clear input immediately (message will appear via WS broadcast)
     setMessage("");
-  };
+  }, [message]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
   const handleVerify = async () => {
     setVerifying(true);
@@ -153,13 +192,13 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
 
   if (!loopDetails.is_member) {
     return (
-      <div className="flex flex-col h-full bg-zinc-900/30 items-center justify-center">
-        <div className="text-center p-8 max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-zinc-800 flex items-center justify-center text-4xl mb-6 mx-auto">
+      <div className="flex flex-col h-full bg-secondary/20 items-center justify-center">
+        <div className="text-center p-8 max-w-md glass rounded-3xl">
+          <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-4xl mb-6 mx-auto">
             🔒
           </div>
           <h2 className="text-2xl font-bold mb-3">Access Required</h2>
-          <p className="text-zinc-400 mb-6">
+          <p className="text-muted mb-6">
             You need to meet the contribution requirements to join this loop.
           </p>
 
@@ -167,19 +206,19 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
             <button
               onClick={handleVerify}
               disabled={verifying}
-              className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors disabled:opacity-50"
+              className="px-6 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors disabled:opacity-50"
             >
               {verifying ? "Checking..." : "Check Eligibility"}
             </button>
           ) : verification.is_member ? (
             // User is already a member - trigger parent refresh to show chat
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm bg-emerald-500/10 text-emerald-400">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm bg-emerald-500/10 text-emerald-500">
                 ✓ Already a Member
               </div>
               <button
                 onClick={() => onMembershipChanged?.()}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-medium transition-colors"
+                className="w-full py-3 rounded-xl bg-accent text-white hover:bg-accent-hover font-medium transition-colors"
               >
                 Open Chat
               </button>
@@ -188,11 +227,10 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
             <div className="space-y-4">
               {/* Status */}
               <div
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${
-                  verification.can_join
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : "bg-amber-500/10 text-amber-400"
-                }`}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${verification.can_join
+                  ? "bg-emerald-500/10 text-emerald-500"
+                  : "bg-amber-500/10 text-amber-500"
+                  }`}
               >
                 {verification.can_join ? "✓ Eligible" : "✗ Not Eligible"}
               </div>
@@ -203,26 +241,24 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
                   {verification.results.map((result, i) => (
                     <div
                       key={i}
-                      className={`p-3 rounded-lg border ${
-                        result.passed
-                          ? "bg-emerald-500/5 border-emerald-500/20"
-                          : "bg-zinc-800/50 border-zinc-700"
-                      }`}
+                      className={`p-3 rounded-lg border ${result.passed
+                        ? "bg-emerald-500/5 border-emerald-500/20"
+                        : "bg-card border-border"
+                        }`}
                     >
                       <div className="flex items-center gap-2 text-sm">
                         {result.passed ? (
                           <span className="text-emerald-500">✓</span>
                         ) : (
-                          <span className="text-zinc-500">○</span>
+                          <span className="text-muted">○</span>
                         )}
-                        <span>{result.message}</span>
+                        <span className="text-foreground">{result.message}</span>
                       </div>
                       <div className="mt-2 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-zinc-700 overflow-hidden">
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
-                              result.passed ? "bg-emerald-500" : "bg-indigo-500"
-                            }`}
+                            className={`h-full rounded-full transition-all ${result.passed ? "bg-emerald-500" : "bg-accent"
+                              }`}
                             style={{
                               width: `${Math.min(
                                 (result.actual / result.required) * 100,
@@ -231,7 +267,7 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
                             }}
                           />
                         </div>
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-muted">
                           {result.actual}/{result.required}
                         </span>
                       </div>
@@ -245,12 +281,12 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
                 <button
                   onClick={handleJoin}
                   disabled={joining}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-medium transition-colors disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors disabled:opacity-50"
                 >
                   {joining ? "Joining..." : "Join Loop"}
                 </button>
               ) : (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted">
                   Keep contributing to this repository to unlock access!
                 </p>
               )}
@@ -262,31 +298,31 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
   }
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900/30 overflow-hidden">
+    <div className="flex flex-col h-full bg-background overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none" />
+
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
-        <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center text-lg">
+      <div className="relative z-10 flex-shrink-0 flex items-center gap-4 px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
           💬
         </div>
         <div>
-          <h2 className="font-semibold">{loopDetails.name}</h2>
-          <p className="text-sm text-zinc-500">
+          <h2 className="font-semibold text-foreground">{loopDetails.name}</h2>
+          <p className="text-sm text-muted">
             {loopDetails.members.length} member
             {loopDetails.members.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <span
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs ${
-              connected
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "bg-zinc-800 text-zinc-400"
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-colors ${connected
+              ? "bg-emerald-500/10 text-emerald-500"
+              : "bg-secondary text-muted"
+              }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
-                connected ? "bg-emerald-500" : "bg-zinc-500"
-              }`}
+              className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-muted"
+                }`}
             />
             {connected ? "Live" : "Connecting..."}
           </span>
@@ -294,60 +330,28 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
       </div>
 
       {/* Messages - this is the only scrollable area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="relative z-0 flex-1 min-h-0 overflow-y-auto p-6 scroll-smooth">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-800 flex items-center justify-center text-3xl mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl mb-4">
               💬
             </div>
-            <h3 className="text-lg font-medium mb-2">
+            <h3 className="text-lg font-medium mb-2 text-foreground">
               Welcome to {loopDetails.name}
             </h3>
-            <p className="text-zinc-500 max-w-md">
+            <p className="text-muted max-w-md">
               This is the beginning of your loop. Start a conversation with
               other verified contributors!
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {messages.map((msg) => (
-              <div key={msg.id} className="flex gap-3 group">
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-zinc-700 flex-shrink-0 relative">
-                  {msg.sender_avatar ? (
-                    <Image
-                      src={msg.sender_avatar}
-                      alt={msg.sender_username}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm">
-                      {msg.sender_username[0]?.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-sm text-zinc-200">
-                      {msg.sender_username}
-                    </span>
-                    <span className="text-xs text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-zinc-300 mt-0.5 break-words">
-                    {msg.content}
-                  </p>
-                </div>
-              </div>
+              <MessageItem key={msg.id} msg={msg} />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -355,8 +359,8 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
       </div>
 
       {/* Input - fixed at bottom */}
-      <div className="flex-shrink-0 p-4 border-t border-zinc-800">
-        <div className="flex items-end gap-3">
+      <div className="relative z-10 flex-shrink-0 p-4 border-t border-border bg-card/50 backdrop-blur-md">
+        <div className="flex items-end gap-3 max-w-5xl mx-auto">
           <div className="flex-1 relative">
             <textarea
               value={message}
@@ -365,14 +369,14 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
               placeholder={connected ? "Type a message..." : "Connecting..."}
               rows={1}
               disabled={!connected}
-              className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none disabled:opacity-50"
-              style={{ minHeight: "48px", maxHeight: "120px" }}
+              className="w-full px-4 py-3 bg-secondary/50 border border-transparent focus:border-accent focus:bg-background rounded-2xl text-foreground placeholder-muted focus:outline-none transition-all resize-none disabled:opacity-50 shadow-sm"
+              style={{ minHeight: "52px", maxHeight: "150px" }}
             />
           </div>
           <button
             onClick={handleSend}
             disabled={!message.trim() || !connected}
-            className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-3.5 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shadow-lg shadow-accent/20"
           >
             <svg
               className="w-5 h-5"
@@ -389,7 +393,7 @@ export default function ChatWindow({ loopDetails, initialMessages, onMembershipC
             </svg>
           </button>
         </div>
-        <p className="text-xs text-zinc-600 mt-2 text-center">
+        <p className="text-xs text-muted mt-2 text-center opacity-60">
           Press Enter to send • Shift+Enter for new line
         </p>
       </div>
