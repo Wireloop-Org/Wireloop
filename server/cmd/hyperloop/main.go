@@ -146,6 +146,13 @@ func main() {
 		protected.GET("/search", Handler.HandleSearchQuery)
 		protected.GET("/my-memberships", Handler.HandleGetMyMemberships)
 
+		// Channel management (Discord-like sub-channels)
+		protected.GET("/loops/:name/channels", Handler.HandleGetChannels)
+		protected.POST("/channels", Handler.HandleCreateChannel)
+		protected.PUT("/channels/:id", Handler.HandleUpdateChannel)
+		protected.DELETE("/channels/:id", Handler.HandleDeleteChannel)
+		protected.GET("/channels/:id/messages", Handler.HandleGetChannelMessages)
+
 		// Gatekeeper - Verify & Join
 		protected.POST("/verify-access", Handler.HandleVerifyAccess)
 		protected.POST("/loops/:name/join", Handler.HandleJoinLoop)
