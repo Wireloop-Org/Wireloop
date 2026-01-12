@@ -191,7 +191,7 @@ func (h *Handler) HandleUpdateChannel(c *gin.Context) {
 	// Build update params
 	params := db.UpdateChannelParams{ID: channelUUID}
 	if req.Name != nil {
-		params.Name = pgtype.Text{String: *req.Name, Valid: true}
+		params.Name = *req.Name
 	}
 	if req.Description != nil {
 		params.Description = pgtype.Text{String: *req.Description, Valid: true}
@@ -370,10 +370,27 @@ func (h *Handler) EnsureDefaultChannel(c *gin.Context, projectID pgtype.UUID) (*
 		// Return the default channel or first channel
 		for _, ch := range channels {
 			if ch.IsDefault.Bool {
-				return &ch, nil
+				return &db.Channel{
+					ID:          ch.ID,
+					ProjectID:   ch.ProjectID,
+					Name:        ch.Name,
+					Description: ch.Description,
+					IsDefault:   ch.IsDefault,
+					Position:    ch.Position,
+					CreatedAt:   ch.CreatedAt,
+				}, nil
 			}
 		}
-		return &channels[0], nil
+		ch := channels[0]
+		return &db.Channel{
+			ID:          ch.ID,
+			ProjectID:   ch.ProjectID,
+			Name:        ch.Name,
+			Description: ch.Description,
+			IsDefault:   ch.IsDefault,
+			Position:    ch.Position,
+			CreatedAt:   ch.CreatedAt,
+		}, nil
 	}
 
 	// Create default #general channel

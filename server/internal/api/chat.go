@@ -9,6 +9,7 @@ import (
 	"wireloop/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type MessagePayload struct {
@@ -89,9 +90,10 @@ func (h *Handler) HandleSendMessage(c *gin.Context) {
 	c.JSON(200, msg)
 }
 
-// HandleGetMessages returns paginated message history for a loop
+// HandleGetMessages returns paginated message history for a channel
 func (h *Handler) HandleGetMessages(c *gin.Context) {
 	loopName := c.Param("name")
+	channelID := c.Query("channel_id")
 	if loopName == "" {
 		c.JSON(400, gin.H{"error": "loop name required"})
 		return
@@ -118,6 +120,23 @@ func (h *Handler) HandleGetMessages(c *gin.Context) {
 		return
 	}
 
+	// Get channel UUID - if not provided, use default channel
+	var channelUUID pgtype.UUID
+	if channelID != "" {
+		if err := channelUUID.Scan(channelID); err != nil {
+			c.JSON(400, gin.H{"error": "invalid channel id"})
+			return
+		}
+	} else {
+		// Get default channel for the loop
+		defaultChannel, err := h.EnsureDefaultChannel(c, project.ID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to get default channel"})
+			return
+		}
+		channelUUID = defaultChannel.ID
+	}
+
 	// Parse pagination
 	limit := int32(50)
 	offset := int32(0)
@@ -133,7 +152,7 @@ func (h *Handler) HandleGetMessages(c *gin.Context) {
 	}
 
 	messages, err := h.Queries.GetMessages(c, db.GetMessagesParams{
-		ProjectID: project.ID,
+		ChannelID: channelUUID,
 		Limit:     limit,
 		Offset:    offset,
 	})
