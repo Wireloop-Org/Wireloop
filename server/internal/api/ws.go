@@ -39,7 +39,7 @@ type WSOutMessage struct {
 func (h *Handler) HandleWS(c *gin.Context) {
 	projectID := c.Query("project_id")
 	channelID := c.Query("channel_id")
-	
+
 	if projectID == "" {
 		c.AbortWithStatus(400)
 		return
@@ -114,7 +114,7 @@ func (h *Handler) HandleWS(c *gin.Context) {
 
 	// Create client with cached user info - no more DB lookups per message!
 	client := chat.NewClient(conn, userID, user.Username, user.AvatarUrl.String)
-	
+
 	// Room is now channel-specific for more granular messaging
 	roomID := channelID
 	h.Hub.Join(roomID, client)

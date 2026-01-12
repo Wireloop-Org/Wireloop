@@ -10,6 +10,7 @@ import {
   InitData,
   LoopFullData,
   Message,
+  Channel,
 } from "@/lib/api";
 import ChatWindow from "@/components/ChatWindow";
 import LoopsList from "@/components/LoopsList";
@@ -228,6 +229,8 @@ export default function LoopPage() {
               members: loopData.members,
             }}
             initialMessages={initialMessagesRef.current || []}
+            channels={loopData.channels || []}
+            activeChannel={loopData.active_channel}
             onMembershipChanged={loadData}
           />
         ) : (

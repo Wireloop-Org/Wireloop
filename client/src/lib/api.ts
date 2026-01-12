@@ -187,6 +187,23 @@ export interface LoopMember {
   joined_at: string;
 }
 
+// Channel types (Discord-like sub-channels)
+export interface Channel {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string;
+  is_default: boolean;
+  position: number;
+  created_at: string;
+}
+
+export interface CreateChannelData {
+  project_id: string;
+  name: string;
+  description?: string;
+}
+
 export interface LoopDetails {
   id: string;
   name: string;
@@ -196,14 +213,16 @@ export interface LoopDetails {
   members: LoopMember[];
 }
 
-// WebSocket connection
-export function createWebSocket(projectId: string): WebSocket | null {
+// WebSocket connection with channel support
+export function createWebSocket(projectId: string, channelId?: string): WebSocket | null {
   const token = getToken();
   if (!token) return null;
 
-  const ws = new WebSocket(
-    `${WS_URL}/api/ws?project_id=${projectId}&token=${token}`
-  );
+  let url = `${WS_URL}/api/ws?project_id=${projectId}&token=${token}`;
+  if (channelId) {
+    url += `&channel_id=${channelId}`;
+  }
+  const ws = new WebSocket(url);
   return ws;
 }
 
@@ -263,6 +282,8 @@ export interface LoopFullData {
   created_at: string;
   is_member: boolean;
   members: LoopMember[];
+  channels: Channel[];
+  active_channel?: Channel;
   messages: Message[];
   _timing?: Record<string, number>;
 }
@@ -431,4 +452,49 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ channel_id: channelId, message_body: message }),
     }),
+
+  // Channel management
+  getChannels: (loopName: string) =>
+    apiRequest<{ channels: Channel[] }>(
+      `/api/loops/${encodeURIComponent(loopName)}/channels`
+    ),
+
+  createChannel: (data: CreateChannelData) =>
+    apiRequest<Channel>("/api/channels", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateChannel: (channelId: string, data: { name?: string; description?: string; position?: number }) =>
+    apiRequest<Channel>(`/api/channels/${channelId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteChannel: (channelId: string) =>
+    apiRequest<{ message: string }>(`/api/channels/${channelId}`, {
+      method: "DELETE",
+    }),
+
+  getChannelMessages: (channelId: string, limit = 50, offset = 0) =>
+    apiRequest<{ messages: Message[] }>(
+      `/api/channels/${channelId}/messages?limit=${limit}&offset=${offset}`
+    ),
+
+  // Get loop data for a specific channel
+  getLoopFullWithChannel: async (name: string, channelId?: string): Promise<LoopFullData> => {
+    const cacheKey = `${LOOP_CACHE_PREFIX}${name}${channelId ? `_${channelId}` : ''}`;
+    const cached = getCached<LoopFullData>(cacheKey);
+    if (cached) return cached;
+
+    const url = channelId 
+      ? `/api/loops/${encodeURIComponent(name)}/full?channel_id=${channelId}`
+      : `/api/loops/${encodeURIComponent(name)}/full`;
+    
+    return deduplicatedRequest(cacheKey, async () => {
+      const data = await apiRequest<LoopFullData>(url);
+      setCache(cacheKey, data);
+      return data;
+    });
+  },
 };
