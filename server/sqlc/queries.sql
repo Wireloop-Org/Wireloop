@@ -95,8 +95,8 @@ ORDER BY similarity(name, sqlc.arg(q)) DESC
 LIMIT sqlc.arg(n);
 
 -- name: AddMessage :exec
-INSERT INTO messages (id, project_id , sender_id, content)
-VALUES ($1, $2, $3, $4);
+INSERT INTO messages (id, project_id, channel_id, sender_id, content)
+VALUES ($1, $2, $3, $4, $5);
 
 
 -- name: IsMember :one
@@ -109,6 +109,22 @@ SELECT
     m.content,
     m.created_at,
     m.sender_id,
+    m.channel_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.channel_id = $1
+ORDER BY m.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetMessagesByProject :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
@@ -165,3 +181,58 @@ FROM memberships mem
 JOIN projects p ON mem.project_id = p.id
 WHERE mem.user_id = $1
 ORDER BY mem.joined_at DESC;
+
+-- ============================================================================
+-- CHANNEL QUERIES
+-- ============================================================================
+
+-- name: CreateChannel :one
+INSERT INTO channels (project_id, name, description, is_default, position)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetChannelsByProject :many
+SELECT 
+    id,
+    project_id,
+    name,
+    description,
+    is_default,
+    position,
+    created_at
+FROM channels
+WHERE project_id = $1
+ORDER BY position ASC, created_at ASC;
+
+-- name: GetChannelByID :one
+SELECT * FROM channels WHERE id = $1 LIMIT 1;
+
+-- name: GetChannelByProjectAndName :one
+SELECT * FROM channels 
+WHERE project_id = $1 AND name = $2 
+LIMIT 1;
+
+-- name: GetDefaultChannel :one
+SELECT * FROM channels 
+WHERE project_id = $1 AND is_default = TRUE 
+LIMIT 1;
+
+-- name: UpdateChannel :one
+UPDATE channels SET
+    name = COALESCE($2, name),
+    description = COALESCE($3, description),
+    position = COALESCE($4, position),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteChannel :exec
+DELETE FROM channels WHERE id = $1;
+
+-- name: GetChannelCount :one
+SELECT COUNT(*) FROM channels WHERE project_id = $1;
+
+-- name: SetDefaultChannel :exec
+UPDATE channels 
+SET is_default = (id = $2)
+WHERE project_id = $1;
