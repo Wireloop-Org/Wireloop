@@ -28,13 +28,14 @@ func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) er
 }
 
 const addMessage = `-- name: AddMessage :exec
-INSERT INTO messages (id, project_id , sender_id, content)
-VALUES ($1, $2, $3, $4)
+INSERT INTO messages (id, project_id, channel_id, sender_id, content)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type AddMessageParams struct {
 	ID        int64
 	ProjectID pgtype.UUID
+	ChannelID pgtype.UUID
 	SenderID  pgtype.UUID
 	Content   string
 }
@@ -43,10 +44,51 @@ func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 	_, err := q.db.Exec(ctx, addMessage,
 		arg.ID,
 		arg.ProjectID,
+		arg.ChannelID,
 		arg.SenderID,
 		arg.Content,
 	)
 	return err
+}
+
+const createChannel = `-- name: CreateChannel :one
+
+INSERT INTO channels (project_id, name, description, is_default, position)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, project_id, name, description, is_default, position, created_at, updated_at
+`
+
+type CreateChannelParams struct {
+	ProjectID   pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	IsDefault   pgtype.Bool
+	Position    pgtype.Int4
+}
+
+// ============================================================================
+// CHANNEL QUERIES
+// ============================================================================
+func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (Channel, error) {
+	row := q.db.QueryRow(ctx, createChannel,
+		arg.ProjectID,
+		arg.Name,
+		arg.Description,
+		arg.IsDefault,
+		arg.Position,
+	)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Description,
+		&i.IsDefault,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const createProject = `-- name: CreateProject :one
@@ -97,6 +139,15 @@ func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, e
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteChannel = `-- name: DeleteChannel :exec
+DELETE FROM channels WHERE id = $1
+`
+
+func (q *Queries) DeleteChannel(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteChannel, id)
+	return err
 }
 
 const getAllLoops = `-- name: GetAllLoops :many
@@ -157,6 +208,138 @@ func (q *Queries) GetAllLoops(ctx context.Context, arg GetAllLoopsParams) ([]Get
 	return items, nil
 }
 
+const getChannelByID = `-- name: GetChannelByID :one
+SELECT id, project_id, name, description, is_default, position, created_at, updated_at FROM channels WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetChannelByID(ctx context.Context, id pgtype.UUID) (Channel, error) {
+	row := q.db.QueryRow(ctx, getChannelByID, id)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Description,
+		&i.IsDefault,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getChannelByProjectAndName = `-- name: GetChannelByProjectAndName :one
+SELECT id, project_id, name, description, is_default, position, created_at, updated_at FROM channels 
+WHERE project_id = $1 AND name = $2 
+LIMIT 1
+`
+
+type GetChannelByProjectAndNameParams struct {
+	ProjectID pgtype.UUID
+	Name      string
+}
+
+func (q *Queries) GetChannelByProjectAndName(ctx context.Context, arg GetChannelByProjectAndNameParams) (Channel, error) {
+	row := q.db.QueryRow(ctx, getChannelByProjectAndName, arg.ProjectID, arg.Name)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Description,
+		&i.IsDefault,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getChannelCount = `-- name: GetChannelCount :one
+SELECT COUNT(*) FROM channels WHERE project_id = $1
+`
+
+func (q *Queries) GetChannelCount(ctx context.Context, projectID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getChannelCount, projectID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getChannelsByProject = `-- name: GetChannelsByProject :many
+SELECT 
+    id,
+    project_id,
+    name,
+    description,
+    is_default,
+    position,
+    created_at
+FROM channels
+WHERE project_id = $1
+ORDER BY position ASC, created_at ASC
+`
+
+type GetChannelsByProjectRow struct {
+	ID          pgtype.UUID
+	ProjectID   pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	IsDefault   pgtype.Bool
+	Position    pgtype.Int4
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetChannelsByProject(ctx context.Context, projectID pgtype.UUID) ([]GetChannelsByProjectRow, error) {
+	rows, err := q.db.Query(ctx, getChannelsByProject, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetChannelsByProjectRow
+	for rows.Next() {
+		var i GetChannelsByProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Description,
+			&i.IsDefault,
+			&i.Position,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDefaultChannel = `-- name: GetDefaultChannel :one
+SELECT id, project_id, name, description, is_default, position, created_at, updated_at FROM channels 
+WHERE project_id = $1 AND is_default = TRUE 
+LIMIT 1
+`
+
+func (q *Queries) GetDefaultChannel(ctx context.Context, projectID pgtype.UUID) (Channel, error) {
+	row := q.db.QueryRow(ctx, getDefaultChannel, projectID)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Description,
+		&i.IsDefault,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getLoopMembers = `-- name: GetLoopMembers :many
 SELECT 
     u.id,
@@ -213,17 +396,18 @@ SELECT
     m.content,
     m.created_at,
     m.sender_id,
+    m.channel_id,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
 JOIN users u ON m.sender_id = u.id
-WHERE m.project_id = $1
+WHERE m.channel_id = $1
 ORDER BY m.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
 type GetMessagesParams struct {
-	ProjectID pgtype.UUID
+	ChannelID pgtype.UUID
 	Limit     int32
 	Offset    int32
 }
@@ -233,12 +417,13 @@ type GetMessagesRow struct {
 	Content        string
 	CreatedAt      pgtype.Timestamptz
 	SenderID       pgtype.UUID
+	ChannelID      pgtype.UUID
 	SenderUsername string
 	SenderAvatar   pgtype.Text
 }
 
 func (q *Queries) GetMessages(ctx context.Context, arg GetMessagesParams) ([]GetMessagesRow, error) {
-	rows, err := q.db.Query(ctx, getMessages, arg.ProjectID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, getMessages, arg.ChannelID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +436,67 @@ func (q *Queries) GetMessages(ctx context.Context, arg GetMessagesParams) ([]Get
 			&i.Content,
 			&i.CreatedAt,
 			&i.SenderID,
+			&i.ChannelID,
+			&i.SenderUsername,
+			&i.SenderAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMessagesByProject = `-- name: GetMessagesByProject :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.project_id = $1
+ORDER BY m.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetMessagesByProjectParams struct {
+	ProjectID pgtype.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetMessagesByProjectRow struct {
+	ID             int64
+	Content        string
+	CreatedAt      pgtype.Timestamptz
+	SenderID       pgtype.UUID
+	ChannelID      pgtype.UUID
+	SenderUsername string
+	SenderAvatar   pgtype.Text
+}
+
+func (q *Queries) GetMessagesByProject(ctx context.Context, arg GetMessagesByProjectParams) ([]GetMessagesByProjectRow, error) {
+	rows, err := q.db.Query(ctx, getMessagesByProject, arg.ProjectID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMessagesByProjectRow
+	for rows.Next() {
+		var i GetMessagesByProjectRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.SenderID,
+			&i.ChannelID,
 			&i.SenderUsername,
 			&i.SenderAvatar,
 		); err != nil {
@@ -653,6 +899,60 @@ func (q *Queries) SearchReposFuzzy(ctx context.Context, arg SearchReposFuzzyPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const setDefaultChannel = `-- name: SetDefaultChannel :exec
+UPDATE channels 
+SET is_default = (id = $2)
+WHERE project_id = $1
+`
+
+type SetDefaultChannelParams struct {
+	ProjectID pgtype.UUID
+	ID        pgtype.UUID
+}
+
+func (q *Queries) SetDefaultChannel(ctx context.Context, arg SetDefaultChannelParams) error {
+	_, err := q.db.Exec(ctx, setDefaultChannel, arg.ProjectID, arg.ID)
+	return err
+}
+
+const updateChannel = `-- name: UpdateChannel :one
+UPDATE channels SET
+    name = COALESCE($2, name),
+    description = COALESCE($3, description),
+    position = COALESCE($4, position),
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, project_id, name, description, is_default, position, created_at, updated_at
+`
+
+type UpdateChannelParams struct {
+	ID          pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	Position    pgtype.Int4
+}
+
+func (q *Queries) UpdateChannel(ctx context.Context, arg UpdateChannelParams) (Channel, error) {
+	row := q.db.QueryRow(ctx, updateChannel,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Position,
+	)
+	var i Channel
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Name,
+		&i.Description,
+		&i.IsDefault,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUserAvatar = `-- name: UpdateUserAvatar :one

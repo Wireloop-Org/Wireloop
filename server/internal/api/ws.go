@@ -24,18 +24,22 @@ var upgrader = websocket.Upgrader{
 
 // WSMessage represents an incoming WebSocket message
 type WSMessage struct {
-	Type    string `json:"type"`
-	Content string `json:"content,omitempty"`
+	Type      string `json:"type"`
+	Content   string `json:"content,omitempty"`
+	ChannelID string `json:"channel_id,omitempty"`
 }
 
 // WSOutMessage represents an outgoing WebSocket message
 type WSOutMessage struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload,omitempty"`
+	Type      string      `json:"type"`
+	Payload   interface{} `json:"payload,omitempty"`
+	ChannelID string      `json:"channel_id,omitempty"`
 }
 
 func (h *Handler) HandleWS(c *gin.Context) {
 	projectID := c.Query("project_id")
+	channelID := c.Query("channel_id")
+
 	if projectID == "" {
 		c.AbortWithStatus(400)
 		return
@@ -70,6 +74,38 @@ func (h *Handler) HandleWS(c *gin.Context) {
 		return
 	}
 
+	// Determine the channel to join
+	var channelUUID pgtype.UUID
+	if channelID != "" {
+		channelUUID, err = utils.StrToUUID(channelID)
+		if err != nil {
+			c.AbortWithStatus(400)
+			return
+		}
+		// Verify channel belongs to project
+		channel, err := h.Queries.GetChannelByID(c, channelUUID)
+		if err != nil || utils.UUIDToStr(channel.ProjectID) != projectID {
+			c.AbortWithStatus(400)
+			return
+		}
+	} else {
+		// Get default channel
+		channel, err := h.Queries.GetDefaultChannel(c, projectUUID)
+		if err != nil {
+			// Try to get any channel
+			channels, err := h.Queries.GetChannelsByProject(c, projectUUID)
+			if err != nil || len(channels) == 0 {
+				c.AbortWithStatus(500)
+				return
+			}
+			channelUUID = channels[0].ID
+			channelID = utils.UUIDToStr(channelUUID)
+		} else {
+			channelUUID = channel.ID
+			channelID = utils.UUIDToStr(channelUUID)
+		}
+	}
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		fmt.Printf("[WS] Upgrade error: %v\n", err)
@@ -78,9 +114,22 @@ func (h *Handler) HandleWS(c *gin.Context) {
 
 	// Create client with cached user info - no more DB lookups per message!
 	client := chat.NewClient(conn, userID, user.Username, user.AvatarUrl.String)
-	h.Hub.Join(projectID, client)
 
-	fmt.Printf("[WS] %s joined room %s\n", user.Username, projectID)
+	// Room is now channel-specific for more granular messaging
+	roomID := channelID
+	h.Hub.Join(roomID, client)
+
+	fmt.Printf("[WS] %s joined channel %s in project %s\n", user.Username, channelID, projectID)
+
+	// Send channel info on connect
+	client.Send(WSOutMessage{
+		Type:      "connected",
+		ChannelID: channelID,
+		Payload: gin.H{
+			"channel_id": channelID,
+			"project_id": projectID,
+		},
+	})
 
 	go client.Write()
 
@@ -98,18 +147,53 @@ func (h *Handler) HandleWS(c *gin.Context) {
 
 		switch msg.Type {
 		case "message":
-			h.handleWSMessage(client, projectID, projectUUID, msg.Content)
+			// Use channel from message if provided, otherwise use connection channel
+			msgChannelID := channelID
+			msgChannelUUID := channelUUID
+			if msg.ChannelID != "" && msg.ChannelID != channelID {
+				// Verify user has access to this channel (belongs to same project)
+				parsedUUID, err := utils.StrToUUID(msg.ChannelID)
+				if err == nil {
+					ch, err := h.Queries.GetChannelByID(c, parsedUUID)
+					if err == nil && utils.UUIDToStr(ch.ProjectID) == projectID {
+						msgChannelID = msg.ChannelID
+						msgChannelUUID = parsedUUID
+					}
+				}
+			}
+			h.handleWSMessage(client, msgChannelID, projectUUID, msgChannelUUID, msg.Content)
+		case "switch_channel":
+			// Switch to a different channel
+			if msg.ChannelID != "" {
+				newChannelUUID, err := utils.StrToUUID(msg.ChannelID)
+				if err == nil {
+					ch, err := h.Queries.GetChannelByID(c, newChannelUUID)
+					if err == nil && utils.UUIDToStr(ch.ProjectID) == projectID {
+						// Leave old room, join new room
+						h.Hub.Leave(roomID, client)
+						roomID = msg.ChannelID
+						channelID = msg.ChannelID
+						channelUUID = newChannelUUID
+						h.Hub.Join(roomID, client)
+						client.Send(WSOutMessage{
+							Type:      "channel_switched",
+							ChannelID: channelID,
+						})
+						fmt.Printf("[WS] %s switched to channel %s\n", user.Username, channelID)
+					}
+				}
+			}
 		case "ping":
 			client.Send(WSOutMessage{Type: "pong"})
 		}
 	}
 
-	h.Hub.Leave(projectID, client)
+	h.Hub.Leave(roomID, client)
 	client.Close()
-	fmt.Printf("[WS] %s left room %s\n", user.Username, projectID)
+	fmt.Printf("[WS] %s left channel %s\n", user.Username, channelID)
 }
 
-func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUID pgtype.UUID, content string) {
+func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUID pgtype.UUID, channelUUID pgtype.UUID, content string) {
 	if content == "" {
 		return
 	}
@@ -127,10 +211,11 @@ func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUI
 		CreatedAt:      now.Format(time.RFC3339),
 	}
 
-	// Broadcast IMMEDIATELY to all clients (including sender for confirmation)
+	// Broadcast IMMEDIATELY to all clients in this channel (including sender for confirmation)
 	h.Hub.Broadcast(roomID, WSOutMessage{
-		Type:    "message",
-		Payload: msgResponse,
+		Type:      "message",
+		Payload:   msgResponse,
+		ChannelID: roomID,
 	})
 
 	// Async DB write - don't block the response!
@@ -142,6 +227,7 @@ func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUI
 			SenderID:  client.UserID,
 			Content:   content,
 			ProjectID: projectUUID,
+			ChannelID: channelUUID,
 		}); err != nil {
 			fmt.Printf("[WS] Failed to persist message: %v\n", err)
 		}

@@ -10,7 +10,9 @@ import {
   InitData,
   LoopFullData,
   Message,
+  Channel,
 } from "@/lib/api";
+import { useLoopsStore } from "@/store/useLoopsStore";
 import ChatWindow from "@/components/ChatWindow";
 import LoopsList from "@/components/LoopsList";
 
@@ -26,6 +28,14 @@ export default function LoopPage() {
   const params = useParams();
   const loopName = decodeURIComponent(params.name as string);
 
+  // Zustand store for loop state management
+  const { 
+    selectedLoop: storeLoop, 
+    selectLoop, 
+    prefetchLoop,
+    isLoopLoading: storeLoading 
+  } = useLoopsStore();
+
   // Core state
   const [initData, setInitData] = useState<InitData | null>(null);
   const [loopData, setLoopData] = useState<LoopFullData | null>(null);
@@ -34,6 +44,15 @@ export default function LoopPage() {
 
   // Track if initial messages were passed to chat
   const initialMessagesRef = useRef<Message[] | null>(null);
+
+  // Sync store loop to local state
+  useEffect(() => {
+    if (storeLoop && storeLoop.name === loopName) {
+      setLoopData(storeLoop);
+      initialMessagesRef.current = storeLoop.messages;
+      setLoading(false);
+    }
+  }, [storeLoop, loopName]);
 
   // Combined sidebar projects (owned + joined)
   const sidebarProjects: SidebarProject[] = initData ? [
@@ -53,22 +72,31 @@ export default function LoopPage() {
       })),
   ] : [];
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (showLoading = true) => {
     const token = getToken();
     if (!token) {
       router.push("/");
       return;
     }
 
-    try {
-      const [init, loop] = await Promise.all([
-        api.getInit(),
-        api.getLoopFull(loopName),
-      ]);
+    // Only show loading if explicitly requested (first load) and no cached data
+    if (showLoading && !storeLoop) {
+      setLoading(true);
+    }
 
-      setInitData(init);
-      setLoopData(loop);
-      initialMessagesRef.current = loop.messages;
+    try {
+      // Fetch init only if not already cached
+      const initPromise = initData ? Promise.resolve(initData) : api.getInit();
+      
+      // Use store's selectLoop for caching benefits
+      const loopPromise = selectLoop(loopName);
+      
+      const [init] = await Promise.all([initPromise, loopPromise]);
+
+      if (!initData) {
+        setInitData(init);
+      }
+      setError(null);
     } catch (err) {
       console.error("Error loading loop:", err);
       if (err instanceof Error && err.message.includes("not found")) {
@@ -82,20 +110,31 @@ export default function LoopPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, loopName]);
+  }, [router, loopName, initData, selectLoop, storeLoop]);
 
+  // Initial load - only on first mount
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Loop name change - use store for instant switching
+  useEffect(() => {
+    if (loopData && loopData.name !== loopName) {
+      selectLoop(loopName);
+    }
+  }, [loopName, loopData, selectLoop]);
 
   // Handle loop selection with prefetch
   const handleSelectLoop = (project: SidebarProject) => {
+    // Start loading immediately using store
+    selectLoop(project.name);
     router.push(`/loops/${encodeURIComponent(project.name)}`);
   };
 
   // Prefetch on hover for instant navigation
   const handleLoopHover = (project: SidebarProject) => {
-    api.prefetchLoop(project.name);
+    prefetchLoop(project.name);
   };
 
   const handleLogout = () => {
@@ -228,6 +267,8 @@ export default function LoopPage() {
               members: loopData.members,
             }}
             initialMessages={initialMessagesRef.current || []}
+            channels={loopData.channels || []}
+            activeChannel={loopData.active_channel}
             onMembershipChanged={loadData}
           />
         ) : (

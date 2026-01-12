@@ -146,17 +146,19 @@ func (h *Handler) HandleInit(c *gin.Context) {
 
 // LoopFullResponse aggregates loop details + messages in ONE request
 type LoopFullResponse struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	OwnerID   string            `json:"owner_id"`
-	CreatedAt string            `json:"created_at"`
-	IsMember  bool              `json:"is_member"`
-	Members   []gin.H           `json:"members"`
-	Messages  []MessageResponse `json:"messages"`
-	Timing    map[string]int64  `json:"_timing,omitempty"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	OwnerID       string            `json:"owner_id"`
+	CreatedAt     string            `json:"created_at"`
+	IsMember      bool              `json:"is_member"`
+	Members       []gin.H           `json:"members"`
+	Channels      []ChannelResponse `json:"channels"`
+	ActiveChannel *ChannelResponse  `json:"active_channel,omitempty"`
+	Messages      []MessageResponse `json:"messages"`
+	Timing        map[string]int64  `json:"_timing,omitempty"`
 }
 
-// HandleLoopFull returns loop details + members + messages in a single request
+// HandleLoopFull returns loop details + members + channels + messages in a single request
 // This eliminates the sequential loading of loop details then messages
 func (h *Handler) HandleLoopFull(c *gin.Context) {
 	start := time.Now()
@@ -167,6 +169,9 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "loop name required"})
 		return
 	}
+
+	// Optional channel_id query param to load specific channel
+	channelIDParam := c.Query("channel_id")
 
 	uid, ok := utils.GetUserIdFromContext(c)
 	if !ok {
@@ -186,15 +191,18 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 	timing["project_ms"] = time.Since(t).Milliseconds()
 
 	var (
-		wg          sync.WaitGroup
-		members     []db.GetLoopMembersRow
-		messages    []db.GetMessagesRow
-		isMember    bool
-		membersErr  error
-		messagesErr error
+		wg            sync.WaitGroup
+		members       []db.GetLoopMembersRow
+		channels      []db.GetChannelsByProjectRow
+		messages      []db.GetMessagesRow
+		isMember      bool
+		membersErr    error
+		channelsErr   error
+		messagesErr   error
+		activeChannel *db.GetChannelsByProjectRow
 	)
 
-	// Launch parallel queries
+	// Launch parallel queries (except messages which depends on channel)
 	wg.Add(3)
 
 	go func() {
@@ -218,13 +226,8 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 	go func() {
 		defer wg.Done()
 		t := time.Now()
-		// Only fetch messages - membership will be checked
-		messages, messagesErr = h.Queries.GetMessages(ctx, db.GetMessagesParams{
-			ProjectID: project.ID,
-			Limit:     50,
-			Offset:    0,
-		})
-		timing["messages_ms"] = time.Since(t).Milliseconds()
+		channels, channelsErr = h.Queries.GetChannelsByProject(ctx, project.ID)
+		timing["channels_ms"] = time.Since(t).Milliseconds()
 	}()
 
 	wg.Wait()
@@ -234,6 +237,43 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 		return
 	}
 
+	// Determine active channel
+	if channelsErr == nil && len(channels) > 0 {
+		if channelIDParam != "" {
+			// Use specified channel
+			for i := range channels {
+				if utils.UUIDToStr(channels[i].ID) == channelIDParam {
+					activeChannel = &channels[i]
+					break
+				}
+			}
+		}
+		// Fall back to default or first channel
+		if activeChannel == nil {
+			for i := range channels {
+				if channels[i].IsDefault.Bool {
+					activeChannel = &channels[i]
+					break
+				}
+			}
+		}
+		if activeChannel == nil {
+			activeChannel = &channels[0]
+		}
+	}
+
+	// Fetch messages for active channel if member
+	if isMember && activeChannel != nil {
+		t := time.Now()
+		messages, messagesErr = h.Queries.GetMessages(ctx, db.GetMessagesParams{
+			ChannelID: activeChannel.ID,
+			Limit:     50,
+			Offset:    0,
+		})
+		timing["messages_ms"] = time.Since(t).Milliseconds()
+	}
+
+	// Build response
 	resp := LoopFullResponse{
 		ID:        utils.UUIDToStr(project.ID),
 		Name:      project.Name,
@@ -241,7 +281,37 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 		CreatedAt: project.CreatedAt.Time.Format(time.RFC3339),
 		IsMember:  isMember,
 		Members:   formatMembers(members),
+		Channels:  make([]ChannelResponse, 0),
 		Messages:  make([]MessageResponse, 0),
+	}
+
+	// Add channels to response
+	if channelsErr == nil && channels != nil {
+		for _, ch := range channels {
+			resp.Channels = append(resp.Channels, ChannelResponse{
+				ID:          utils.UUIDToStr(ch.ID),
+				ProjectID:   utils.UUIDToStr(ch.ProjectID),
+				Name:        ch.Name,
+				Description: ch.Description.String,
+				IsDefault:   ch.IsDefault.Bool,
+				Position:    int(ch.Position.Int32),
+				CreatedAt:   ch.CreatedAt.Time.Format(time.RFC3339),
+			})
+		}
+	}
+
+	// Add active channel info
+	if activeChannel != nil {
+		active := ChannelResponse{
+			ID:          utils.UUIDToStr(activeChannel.ID),
+			ProjectID:   utils.UUIDToStr(activeChannel.ProjectID),
+			Name:        activeChannel.Name,
+			Description: activeChannel.Description.String,
+			IsDefault:   activeChannel.IsDefault.Bool,
+			Position:    int(activeChannel.Position.Int32),
+			CreatedAt:   activeChannel.CreatedAt.Time.Format(time.RFC3339),
+		}
+		resp.ActiveChannel = &active
 	}
 
 	// Only include messages if user is a member
@@ -267,8 +337,8 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 	timing["total_ms"] = time.Since(start).Milliseconds()
 	resp.Timing = timing
 
-	log.Printf("[LoopFull] %s completed in %dms (project: %dms, members: %dms, messages: %dms)",
-		name, timing["total_ms"], timing["project_ms"], timing["members_ms"], timing["messages_ms"])
+	log.Printf("[LoopFull] %s completed in %dms (project: %dms, members: %dms, channels: %dms, messages: %dms)",
+		name, timing["total_ms"], timing["project_ms"], timing["members_ms"], timing["channels_ms"], timing["messages_ms"])
 
 	c.JSON(200, resp)
 }

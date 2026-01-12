@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, InitData, LoopFullData } from '@/lib/api';
+import { api, InitData, LoopFullData, Channel } from '@/lib/api';
 
 interface LoopProject {
     id: string;
@@ -20,6 +20,8 @@ interface LoopsState {
     ownedLoops: LoopProject[];
     joinedLoops: LoopMembership[];
     selectedLoop: LoopFullData | null;
+    loopCache: Map<string, LoopFullData>; // Cache loops for instant switching
+    activeChannel: Channel | null;
     isLoading: boolean;
     isLoopLoading: boolean;
 
@@ -28,10 +30,12 @@ interface LoopsState {
 
     // Actions
     fetchLoops: () => Promise<void>;
-    selectLoop: (name: string) => Promise<void>;
+    selectLoop: (name: string, forceRefresh?: boolean) => Promise<void>;
     prefetchLoop: (name: string) => void;
+    setActiveChannel: (channel: Channel) => void;
     clearSelectedLoop: () => void;
     invalidate: () => void;
+    updateLoopCache: (name: string, data: LoopFullData) => void;
 }
 
 export const useLoopsStore = create<LoopsState>((set, get) => ({
@@ -39,6 +43,8 @@ export const useLoopsStore = create<LoopsState>((set, get) => ({
     ownedLoops: [],
     joinedLoops: [],
     selectedLoop: null,
+    loopCache: new Map(),
+    activeChannel: null,
     isLoading: true,
     isLoopLoading: false,
 
@@ -68,12 +74,40 @@ export const useLoopsStore = create<LoopsState>((set, get) => ({
         }
     },
 
-    // Select and load a specific loop
-    selectLoop: async (name: string) => {
+    // Select and load a specific loop with caching
+    selectLoop: async (name: string, forceRefresh = false) => {
+        const { loopCache } = get();
+        
+        // Check cache first for instant switching
+        const cached = loopCache.get(name);
+        if (cached && !forceRefresh) {
+            set({ 
+                selectedLoop: cached, 
+                activeChannel: cached.active_channel || null,
+                isLoopLoading: false 
+            });
+            
+            // Background refresh to get latest messages
+            api.getLoopFull(name).then(loop => {
+                get().updateLoopCache(name, loop);
+                // Only update if still viewing this loop
+                if (get().selectedLoop?.name === name) {
+                    set({ selectedLoop: loop, activeChannel: loop.active_channel || null });
+                }
+            }).catch(() => {});
+            
+            return;
+        }
+        
         set({ isLoopLoading: true });
         try {
             const loop = await api.getLoopFull(name);
-            set({ selectedLoop: loop, isLoopLoading: false });
+            get().updateLoopCache(name, loop);
+            set({ 
+                selectedLoop: loop, 
+                activeChannel: loop.active_channel || null,
+                isLoopLoading: false 
+            });
         } catch (err) {
             console.error('Failed to load loop:', err);
             set({ isLoopLoading: false });
@@ -81,19 +115,39 @@ export const useLoopsStore = create<LoopsState>((set, get) => ({
         }
     },
 
+    // Update loop cache
+    updateLoopCache: (name: string, data: LoopFullData) => {
+        const { loopCache } = get();
+        const newCache = new Map(loopCache);
+        newCache.set(name, data);
+        set({ loopCache: newCache });
+    },
+
+    // Set active channel
+    setActiveChannel: (channel: Channel) => {
+        set({ activeChannel: channel });
+    },
+
     // Prefetch loop data on hover (non-blocking)
     prefetchLoop: (name: string) => {
+        const { loopCache } = get();
+        if (loopCache.has(name)) return;
+        
         api.prefetchLoop(name);
+        // Also try to cache it
+        api.getLoopFull(name).then(loop => {
+            get().updateLoopCache(name, loop);
+        }).catch(() => {});
     },
 
     // Clear selected loop
     clearSelectedLoop: () => {
-        set({ selectedLoop: null });
+        set({ selectedLoop: null, activeChannel: null });
     },
 
     // Invalidate and refetch
     invalidate: () => {
-        set({ ownedLoops: [], joinedLoops: [], isLoading: true });
+        set({ ownedLoops: [], joinedLoops: [], isLoading: true, loopCache: new Map() });
         get().fetchLoops();
     },
 }));
@@ -103,3 +157,4 @@ export const useOwnedLoops = () => useLoopsStore((state) => state.ownedLoops);
 export const useJoinedLoops = () => useLoopsStore((state) => state.joinedLoops);
 export const useSelectedLoop = () => useLoopsStore((state) => state.selectedLoop);
 export const useLoopsLoading = () => useLoopsStore((state) => state.isLoading);
+export const useActiveChannel = () => useLoopsStore((state) => state.activeChannel);

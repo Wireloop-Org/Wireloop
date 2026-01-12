@@ -95,6 +95,20 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
 		return
 	}
 
+	// Create default #general channel for the new loop
+	channel, err := qtx.CreateChannel(c, db.CreateChannelParams{
+		ProjectID:   project.ID,
+		Name:        "general",
+		Description: pgtype.Text{String: "General discussion", Valid: true},
+		IsDefault:   pgtype.Bool{Bool: true, Valid: true},
+		Position:    pgtype.Int4{Int32: 0, Valid: true},
+	})
+	if err != nil {
+		log.Printf("CreateChannel error: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create default channel: " + err.Error()})
+		return
+	}
+
 	// Commit the transaction
 	if err := tx.Commit(c); err != nil {
 		log.Printf("Failed to commit transaction: %v", err)
@@ -103,8 +117,9 @@ func (h *Handler) HandleMakeChannel(c *gin.Context) {
 	}
 
 	c.JSON(201, gin.H{
-		"id":   project.ID,
-		"name": project.Name,
+		"id":              project.ID,
+		"name":            project.Name,
+		"default_channel": channel.ID,
 	})
 }
 
