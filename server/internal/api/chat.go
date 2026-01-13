@@ -13,17 +13,26 @@ import (
 )
 
 type MessagePayload struct {
-	MessageBody string `json:"message_body"`
-	ChannelID   string `json:"channel_id"`
+	MessageBody string  `json:"message_body"`
+	ChannelID   string  `json:"channel_id"`
+	ParentID    *string `json:"parent_id,omitempty"` // For thread replies
+}
+
+// DeleteMessageRequest represents a request to delete a message
+type DeleteMessageRequest struct {
+	MessageID string `json:"message_id" binding:"required"`
 }
 
 type MessageResponse struct {
-	ID             string `json:"id"`
-	Content        string `json:"content"`
-	SenderID       string `json:"sender_id"`
-	SenderUsername string `json:"sender_username"`
-	SenderAvatar   string `json:"sender_avatar"`
-	CreatedAt      string `json:"created_at"`
+	ID             string  `json:"id"`
+	Content        string  `json:"content"`
+	SenderID       string  `json:"sender_id"`
+	SenderUsername string  `json:"sender_username"`
+	SenderAvatar   string  `json:"sender_avatar"`
+	CreatedAt      string  `json:"created_at"`
+	ChannelID      string  `json:"channel_id,omitempty"`
+	ParentID       *string `json:"parent_id,omitempty"`
+	ReplyCount     int     `json:"reply_count"`
 }
 
 func (h *Handler) HandleSendMessage(c *gin.Context) {
@@ -164,6 +173,11 @@ func (h *Handler) HandleGetMessages(c *gin.Context) {
 	// Transform to response format
 	result := make([]MessageResponse, len(messages))
 	for i, m := range messages {
+		var parentID *string
+		if m.ParentID.Valid {
+			pid := strconv.FormatInt(m.ParentID.Int64, 10)
+			parentID = &pid
+		}
 		result[i] = MessageResponse{
 			ID:             strconv.FormatInt(m.ID, 10),
 			Content:        m.Content,
@@ -171,6 +185,8 @@ func (h *Handler) HandleGetMessages(c *gin.Context) {
 			SenderUsername: m.SenderUsername,
 			SenderAvatar:   m.SenderAvatar.String,
 			CreatedAt:      m.CreatedAt.Time.Format(time.RFC3339),
+			ParentID:       parentID,
+			ReplyCount:     int(m.ReplyCount.Int32),
 		}
 	}
 
@@ -180,6 +196,148 @@ func (h *Handler) HandleGetMessages(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"messages": result})
+}
+
+// HandleGetThreadReplies returns all replies to a specific message
+func (h *Handler) HandleGetThreadReplies(c *gin.Context) {
+	messageIDStr := c.Param("message_id")
+	if messageIDStr == "" {
+		c.JSON(400, gin.H{"error": "message id required"})
+		return
+	}
+
+	uid, ok := utils.GetUserIdFromContext(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	messageID, err := strconv.ParseInt(messageIDStr, 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid message id"})
+		return
+	}
+
+	// Get the parent message to verify channel access
+	parentMsg, err := h.Queries.GetMessageByID(c, messageID)
+	if err != nil {
+		c.JSON(404, gin.H{"error": "message not found"})
+		return
+	}
+
+	// Verify membership via project_id
+	if _, err := h.Queries.IsMember(c, db.IsMemberParams{
+		UserID: uid, ProjectID: parentMsg.ProjectID,
+	}); err != nil {
+		c.JSON(403, gin.H{"error": "not a member"})
+		return
+	}
+
+	// Parse pagination
+	limit := int32(50)
+	offset := int32(0)
+	if l := c.Query("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
+			limit = int32(v)
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+			offset = int32(v)
+		}
+	}
+
+	replies, err := h.Queries.GetThreadReplies(c, db.GetThreadRepliesParams{
+		ParentID: pgtype.Int8{Int64: parentMsg.ID, Valid: true},
+		Limit:    limit,
+		Offset:   offset,
+	})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get replies"})
+		return
+	}
+
+	result := make([]MessageResponse, len(replies))
+	for i, m := range replies {
+		var parentID *string
+		if m.ParentID.Valid {
+			pid := strconv.FormatInt(m.ParentID.Int64, 10)
+			parentID = &pid
+		}
+		result[i] = MessageResponse{
+			ID:             strconv.FormatInt(m.ID, 10),
+			Content:        m.Content,
+			SenderID:       utils.UUIDToStr(m.SenderID),
+			SenderUsername: m.SenderUsername,
+			SenderAvatar:   m.SenderAvatar.String,
+			CreatedAt:      m.CreatedAt.Time.Format(time.RFC3339),
+			ParentID:       parentID,
+		}
+	}
+
+	c.JSON(200, gin.H{"replies": result, "parent_id": messageIDStr})
+}
+
+// HandleDeleteMessage soft-deletes a message (only by sender or loop owner)
+func (h *Handler) HandleDeleteMessage(c *gin.Context) {
+	messageIDStr := c.Param("message_id")
+	if messageIDStr == "" {
+		c.JSON(400, gin.H{"error": "message id required"})
+		return
+	}
+
+	uid, ok := utils.GetUserIdFromContext(c)
+	if !ok {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	messageID, err := strconv.ParseInt(messageIDStr, 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid message id"})
+		return
+	}
+
+	// Get the message
+	msg, err := h.Queries.GetMessageByID(c, messageID)
+	if err != nil {
+		c.JSON(404, gin.H{"error": "message not found"})
+		return
+	}
+
+	// Get project to check ownership
+	project, err := h.Queries.GetProjectByID(c, msg.ProjectID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get project"})
+		return
+	}
+
+	// Only sender or project owner can delete
+	isSender := msg.SenderID == uid
+	isOwner := project.OwnerID == uid
+	if !isSender && !isOwner {
+		c.JSON(403, gin.H{"error": "only message sender or loop owner can delete"})
+		return
+	}
+
+	// Soft delete the message
+	if err := h.Queries.SoftDeleteMessage(c, messageID); err != nil {
+		c.JSON(500, gin.H{"error": "failed to delete message"})
+		return
+	}
+
+	// If it was a reply, decrement parent's reply count
+	if msg.ParentID.Valid {
+		h.Queries.DecrementReplyCount(c, msg.ParentID.Int64)
+	}
+
+	// Broadcast deletion to WebSocket
+	h.PushToWS(utils.UUIDToStr(msg.ChannelID), gin.H{
+		"type":       "message_deleted",
+		"message_id": messageIDStr,
+	})
+
+	c.JSON(200, gin.H{"message": "deleted", "id": messageIDStr})
 }
 
 // HandleGetLoopDetails returns loop info including members

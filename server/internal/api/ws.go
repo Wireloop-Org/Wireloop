@@ -24,9 +24,10 @@ var upgrader = websocket.Upgrader{
 
 // WSMessage represents an incoming WebSocket message
 type WSMessage struct {
-	Type      string `json:"type"`
-	Content   string `json:"content,omitempty"`
-	ChannelID string `json:"channel_id,omitempty"`
+	Type      string  `json:"type"`
+	Content   string  `json:"content,omitempty"`
+	ChannelID string  `json:"channel_id,omitempty"`
+	ParentID  *string `json:"parent_id,omitempty"` // For thread replies
 }
 
 // WSOutMessage represents an outgoing WebSocket message
@@ -161,7 +162,7 @@ func (h *Handler) HandleWS(c *gin.Context) {
 					}
 				}
 			}
-			h.handleWSMessage(client, msgChannelID, projectUUID, msgChannelUUID, msg.Content)
+			h.handleWSMessage(client, msgChannelID, projectUUID, msgChannelUUID, msg.Content, msg.ParentID)
 		case "switch_channel":
 			// Switch to a different channel
 			if msg.ChannelID != "" {
@@ -193,13 +194,23 @@ func (h *Handler) HandleWS(c *gin.Context) {
 	fmt.Printf("[WS] %s left channel %s\n", user.Username, channelID)
 }
 
-func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUID pgtype.UUID, channelUUID pgtype.UUID, content string) {
+func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUID pgtype.UUID, channelUUID pgtype.UUID, content string, parentIDStr *string) {
 	if content == "" {
 		return
 	}
 
 	msgID := utils.GetMessageId()
 	now := time.Now()
+
+	// Parse parent_id for thread replies
+	var parentID pgtype.Int8
+	var parentIDResponse *string
+	if parentIDStr != nil && *parentIDStr != "" {
+		if pid, err := strconv.ParseInt(*parentIDStr, 10, 64); err == nil {
+			parentID = pgtype.Int8{Int64: pid, Valid: true}
+			parentIDResponse = parentIDStr
+		}
+	}
 
 	// Build message response with cached user info (no DB lookup!)
 	msgResponse := MessageResponse{
@@ -209,6 +220,9 @@ func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUI
 		SenderUsername: client.Username,
 		SenderAvatar:   client.AvatarURL,
 		CreatedAt:      now.Format(time.RFC3339),
+		ChannelID:      roomID,
+		ParentID:       parentIDResponse,
+		ReplyCount:     0,
 	}
 
 	// Broadcast IMMEDIATELY to all clients in this channel (including sender for confirmation)
@@ -228,8 +242,13 @@ func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUI
 			Content:   content,
 			ProjectID: projectUUID,
 			ChannelID: channelUUID,
+			ParentID:  parentID,
 		}); err != nil {
 			fmt.Printf("[WS] Failed to persist message: %v\n", err)
+		}
+		// If this is a reply, increment the parent's reply count
+		if parentID.Valid {
+			h.Queries.IncrementReplyCount(ctx, parentID.Int64)
 		}
 	}()
 }

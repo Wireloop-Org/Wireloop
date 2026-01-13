@@ -340,6 +340,11 @@ func (h *Handler) HandleGetChannelMessages(c *gin.Context) {
 	// Transform to response format
 	result := make([]MessageResponse, len(messages))
 	for i, m := range messages {
+		var parentID *string
+		if m.ParentID.Valid {
+			pid := strconv.FormatInt(m.ParentID.Int64, 10)
+			parentID = &pid
+		}
 		result[i] = MessageResponse{
 			ID:             strconv.FormatInt(m.ID, 10),
 			Content:        m.Content,
@@ -347,6 +352,8 @@ func (h *Handler) HandleGetChannelMessages(c *gin.Context) {
 			SenderUsername: m.SenderUsername,
 			SenderAvatar:   m.SenderAvatar.String,
 			CreatedAt:      m.CreatedAt.Time.Format(time.RFC3339),
+			ParentID:       parentID,
+			ReplyCount:     int(m.ReplyCount.Int32),
 		}
 	}
 

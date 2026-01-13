@@ -161,6 +161,10 @@ func main() {
 		protected.GET("/loops/:name/messages", Handler.HandleGetMessages)
 		protected.POST("/loop/message", Handler.HandleSendMessage)
 
+		// Thread / Replies
+		protected.GET("/messages/:message_id/replies", Handler.HandleGetThreadReplies)
+		protected.DELETE("/messages/:message_id", Handler.HandleDeleteMessage)
+
 		// WebSocket
 		protected.GET("/ws", Handler.HandleWS)
 	}

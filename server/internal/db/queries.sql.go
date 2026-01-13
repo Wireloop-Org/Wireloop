@@ -28,8 +28,8 @@ func (q *Queries) AddMembership(ctx context.Context, arg AddMembershipParams) er
 }
 
 const addMessage = `-- name: AddMessage :exec
-INSERT INTO messages (id, project_id, channel_id, sender_id, content)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO messages (id, project_id, channel_id, sender_id, content, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type AddMessageParams struct {
@@ -38,6 +38,7 @@ type AddMessageParams struct {
 	ChannelID pgtype.UUID
 	SenderID  pgtype.UUID
 	Content   string
+	ParentID  pgtype.Int8
 }
 
 func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
@@ -47,6 +48,33 @@ func (q *Queries) AddMessage(ctx context.Context, arg AddMessageParams) error {
 		arg.ChannelID,
 		arg.SenderID,
 		arg.Content,
+		arg.ParentID,
+	)
+	return err
+}
+
+const addReply = `-- name: AddReply :exec
+INSERT INTO messages (id, project_id, channel_id, sender_id, content, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type AddReplyParams struct {
+	ID        int64
+	ProjectID pgtype.UUID
+	ChannelID pgtype.UUID
+	SenderID  pgtype.UUID
+	Content   string
+	ParentID  pgtype.Int8
+}
+
+func (q *Queries) AddReply(ctx context.Context, arg AddReplyParams) error {
+	_, err := q.db.Exec(ctx, addReply,
+		arg.ID,
+		arg.ProjectID,
+		arg.ChannelID,
+		arg.SenderID,
+		arg.Content,
+		arg.ParentID,
 	)
 	return err
 }
@@ -139,6 +167,15 @@ func (q *Queries) CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, e
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const decrementReplyCount = `-- name: DecrementReplyCount :exec
+UPDATE messages SET reply_count = GREATEST(0, reply_count - 1) WHERE id = $1
+`
+
+func (q *Queries) DecrementReplyCount(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, decrementReplyCount, id)
+	return err
 }
 
 const deleteChannel = `-- name: DeleteChannel :exec
@@ -390,6 +427,28 @@ func (q *Queries) GetLoopMembers(ctx context.Context, projectID pgtype.UUID) ([]
 	return items, nil
 }
 
+const getMessageByID = `-- name: GetMessageByID :one
+SELECT id, project_id, channel_id, sender_id, content, parent_id, reply_count, is_deleted, deleted_at, created_at FROM messages WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetMessageByID(ctx context.Context, id int64) (Message, error) {
+	row := q.db.QueryRow(ctx, getMessageByID, id)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.ChannelID,
+		&i.SenderID,
+		&i.Content,
+		&i.ParentID,
+		&i.ReplyCount,
+		&i.IsDeleted,
+		&i.DeletedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getMessages = `-- name: GetMessages :many
 SELECT 
     m.id,
@@ -397,11 +456,15 @@ SELECT
     m.created_at,
     m.sender_id,
     m.channel_id,
+    m.parent_id,
+    m.reply_count,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
 JOIN users u ON m.sender_id = u.id
-WHERE m.channel_id = $1
+WHERE m.channel_id = $1 
+  AND m.parent_id IS NULL 
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
 ORDER BY m.created_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -418,6 +481,8 @@ type GetMessagesRow struct {
 	CreatedAt      pgtype.Timestamptz
 	SenderID       pgtype.UUID
 	ChannelID      pgtype.UUID
+	ParentID       pgtype.Int8
+	ReplyCount     pgtype.Int4
 	SenderUsername string
 	SenderAvatar   pgtype.Text
 }
@@ -437,6 +502,8 @@ func (q *Queries) GetMessages(ctx context.Context, arg GetMessagesParams) ([]Get
 			&i.CreatedAt,
 			&i.SenderID,
 			&i.ChannelID,
+			&i.ParentID,
+			&i.ReplyCount,
 			&i.SenderUsername,
 			&i.SenderAvatar,
 		); err != nil {
@@ -457,11 +524,15 @@ SELECT
     m.created_at,
     m.sender_id,
     m.channel_id,
+    m.parent_id,
+    m.reply_count,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
 JOIN users u ON m.sender_id = u.id
-WHERE m.project_id = $1
+WHERE m.project_id = $1 
+  AND m.parent_id IS NULL
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
 ORDER BY m.created_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -478,6 +549,8 @@ type GetMessagesByProjectRow struct {
 	CreatedAt      pgtype.Timestamptz
 	SenderID       pgtype.UUID
 	ChannelID      pgtype.UUID
+	ParentID       pgtype.Int8
+	ReplyCount     pgtype.Int4
 	SenderUsername string
 	SenderAvatar   pgtype.Text
 }
@@ -497,6 +570,8 @@ func (q *Queries) GetMessagesByProject(ctx context.Context, arg GetMessagesByPro
 			&i.CreatedAt,
 			&i.SenderID,
 			&i.ChannelID,
+			&i.ParentID,
+			&i.ReplyCount,
 			&i.SenderUsername,
 			&i.SenderAvatar,
 		); err != nil {
@@ -664,6 +739,70 @@ func (q *Queries) GetRulesByProject(ctx context.Context, projectID pgtype.UUID) 
 	return items, nil
 }
 
+const getThreadReplies = `-- name: GetThreadReplies :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
+    m.parent_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.parent_id = $1 
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
+ORDER BY m.created_at ASC
+LIMIT $2 OFFSET $3
+`
+
+type GetThreadRepliesParams struct {
+	ParentID pgtype.Int8
+	Limit    int32
+	Offset   int32
+}
+
+type GetThreadRepliesRow struct {
+	ID             int64
+	Content        string
+	CreatedAt      pgtype.Timestamptz
+	SenderID       pgtype.UUID
+	ChannelID      pgtype.UUID
+	ParentID       pgtype.Int8
+	SenderUsername string
+	SenderAvatar   pgtype.Text
+}
+
+func (q *Queries) GetThreadReplies(ctx context.Context, arg GetThreadRepliesParams) ([]GetThreadRepliesRow, error) {
+	rows, err := q.db.Query(ctx, getThreadReplies, arg.ParentID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetThreadRepliesRow
+	for rows.Next() {
+		var i GetThreadRepliesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.SenderID,
+			&i.ChannelID,
+			&i.ParentID,
+			&i.SenderUsername,
+			&i.SenderAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByGithubID = `-- name: GetUserByGithubID :one
 SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE github_id = $1 LIMIT 1
 `
@@ -808,6 +947,24 @@ func (q *Queries) GetUserProfile(ctx context.Context, id pgtype.UUID) (GetUserPr
 	return i, err
 }
 
+const hardDeleteMessage = `-- name: HardDeleteMessage :exec
+DELETE FROM messages WHERE id = $1
+`
+
+func (q *Queries) HardDeleteMessage(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, hardDeleteMessage, id)
+	return err
+}
+
+const incrementReplyCount = `-- name: IncrementReplyCount :exec
+UPDATE messages SET reply_count = reply_count + 1 WHERE id = $1
+`
+
+func (q *Queries) IncrementReplyCount(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, incrementReplyCount, id)
+	return err
+}
+
 const isMember = `-- name: IsMember :one
 SELECT 1 FROM memberships
 WHERE user_id = $1 AND project_id = $2 LIMIT 1
@@ -914,6 +1071,17 @@ type SetDefaultChannelParams struct {
 
 func (q *Queries) SetDefaultChannel(ctx context.Context, arg SetDefaultChannelParams) error {
 	_, err := q.db.Exec(ctx, setDefaultChannel, arg.ProjectID, arg.ID)
+	return err
+}
+
+const softDeleteMessage = `-- name: SoftDeleteMessage :exec
+UPDATE messages 
+SET is_deleted = TRUE, deleted_at = NOW(), content = '[Message deleted]'
+WHERE id = $1
+`
+
+func (q *Queries) SoftDeleteMessage(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, softDeleteMessage, id)
 	return err
 }
 

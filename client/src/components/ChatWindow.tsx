@@ -1,44 +1,222 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, createWebSocket, Message, LoopDetails, VerifyAccessResponse, Channel } from "@/lib/api";
+import {
+  api,
+  Message,
+  Channel,
+  createWebSocket,
+  VerifyAccessResponse,
+} from "@/lib/api";
 
-// Memoized message item to prevent re-renders of entire list
-const MessageItem = memo(function MessageItem({ msg }: { msg: Message }) {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface LoopDetails {
+  id: string;
+  name: string;
+  owner_id?: string;
+  created_at: string;
+  is_member?: boolean;
+  members?: Array<{
+    id: string;
+    username: string;
+    avatar_url: string;
+    display_name: string;
+    role: string;
+  }>;
+}
+
+interface ChatWindowProps {
+  loopDetails: LoopDetails;
+  initialMessages?: Message[];
+  channels?: Channel[];
+  activeChannel?: Channel;
+  onMembershipChanged?: () => void;
+  onChannelChange?: (channel: Channel) => void;
+  currentUserId?: string;
+}
+
+// ============================================================================
+// MESSAGE CACHE: Per-channel message storage
+// ============================================================================
+const messageCache = new Map<string, Message[]>();
+
+function getCachedMessages(channelId: string): Message[] {
+  return messageCache.get(channelId) || [];
+}
+
+function setCachedMessages(channelId: string, messages: Message[]): void {
+  messageCache.set(channelId, messages);
+}
+
+function updateCachedMessage(channelId: string, updater: (msgs: Message[]) => Message[]): void {
+  const current = messageCache.get(channelId) || [];
+  messageCache.set(channelId, updater(current));
+}
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+// Individual message component - memoized to prevent re-renders
+const MessageItem = memo(function MessageItem({
+  msg,
+  currentUserId,
+  isOwner,
+  onReply,
+  onDelete,
+}: {
+  msg: Message;
+  currentUserId?: string;
+  isOwner: boolean;
+  onReply: (msg: Message) => void;
+  onDelete: (msg: Message) => void;
+}) {
+  const isOwnMessage = msg.sender_id === currentUserId;
+  const canDelete = isOwnMessage || isOwner;
+  const isDeleted = msg.content === "[Message deleted]";
+  const replyCount = msg.reply_count ?? 0;
+
   return (
-    <div className="flex gap-4 group animate-fade-in-up">
-      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0 relative border border-border">
+    <div className="group flex gap-3 hover:bg-secondary/30 p-2 rounded-lg transition-colors">
+      <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-secondary border border-border">
         {msg.sender_avatar ? (
           <Image
             src={msg.sender_avatar}
             alt={msg.sender_username}
-            fill
+            width={36}
+            height={36}
             className="object-cover"
             unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-sm text-muted">
-            {msg.sender_username[0]?.toUpperCase()}
+            {msg.sender_username?.[0]?.toUpperCase() || "?"}
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 mb-1">
-          <span className="font-semibold text-sm text-foreground">
-            {msg.sender_username}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm text-foreground">
+            {msg.sender_username || "Unknown"}
           </span>
-          <span className="text-xs text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-xs text-muted">
             {new Date(msg.created_at).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </span>
         </div>
-        <div className="text-foreground/90 leading-relaxed break-words">
+        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-muted italic" : "text-foreground/90"}`}>
           {msg.content}
+        </p>
+        
+        {/* Reply count & action buttons */}
+        <div className="flex items-center gap-3 mt-1">
+          {replyCount > 0 && (
+            <button
+              onClick={() => onReply(msg)}
+              className="text-xs text-accent hover:underline flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              {replyCount} {replyCount === 1 ? "reply" : "replies"}
+            </button>
+          )}
+          
+          {/* Action buttons - show on hover */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+            {!isDeleted && (
+              <button
+                onClick={() => onReply(msg)}
+                className="text-xs text-muted hover:text-foreground flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                Reply
+              </button>
+            )}
+            {canDelete && !isDeleted && (
+              <button
+                onClick={() => onDelete(msg)}
+                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            )}
+          </div>
         </div>
+      </div>
+    </div>
+  );
+});
+
+// Thread reply component
+const ThreadReplyItem = memo(function ThreadReplyItem({
+  msg,
+  currentUserId,
+  isOwner,
+  onDelete,
+}: {
+  msg: Message;
+  currentUserId?: string;
+  isOwner: boolean;
+  onDelete: (msg: Message) => void;
+}) {
+  const isOwnMessage = msg.sender_id === currentUserId;
+  const canDelete = isOwnMessage || isOwner;
+  const isDeleted = msg.content === "[Message deleted]";
+
+  return (
+    <div className="group flex gap-2 hover:bg-secondary/30 p-2 rounded-lg transition-colors">
+      <div className="shrink-0 w-7 h-7 rounded-full overflow-hidden bg-secondary border border-border">
+        {msg.sender_avatar ? (
+          <Image
+            src={msg.sender_avatar}
+            alt={msg.sender_username}
+            width={28}
+            height={28}
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-xs text-muted">
+            {msg.sender_username?.[0]?.toUpperCase() || "?"}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-xs text-foreground">
+            {msg.sender_username || "Unknown"}
+          </span>
+          <span className="text-xs text-muted">
+            {new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+          {canDelete && !isDeleted && (
+            <button
+              onClick={() => onDelete(msg)}
+              className="opacity-0 group-hover:opacity-100 ml-auto text-xs text-red-400 hover:text-red-300"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-muted italic" : "text-foreground/90"}`}>
+          {msg.content}
+        </p>
       </div>
     </div>
   );
@@ -48,128 +226,471 @@ const MessageItem = memo(function MessageItem({ msg }: { msg: Message }) {
 const ChannelItem = memo(function ChannelItem({
   channel,
   isActive,
-  onSelect,
+  onClick,
 }: {
   channel: Channel;
   isActive: boolean;
-  onSelect: (channel: Channel) => void;
+  onClick: () => void;
 }) {
   return (
     <button
-      onClick={() => onSelect(channel)}
-      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all group ${
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
         isActive
-          ? "bg-accent/10 text-accent border border-accent/20"
-          : "hover:bg-secondary text-muted hover:text-foreground"
+          ? "bg-accent text-accent-foreground"
+          : "text-muted hover:text-foreground hover:bg-secondary"
       }`}
     >
-      <span className="text-lg opacity-70">#</span>
-      <span className="text-sm font-medium truncate">{channel.name}</span>
-      {channel.is_default && (
-        <span className="ml-auto text-xs px-1.5 py-0.5 rounded bg-secondary text-muted">
-          default
-        </span>
-      )}
+      <span className="text-muted-foreground">#</span>
+      <span className="truncate">{channel.name}</span>
     </button>
   );
 });
 
-interface ChatWindowProps {
-  loopDetails: LoopDetails;
-  initialMessages?: Message[];
-  channels?: Channel[];
-  activeChannel?: Channel;
-  onMembershipChanged?: () => void;
-  onChannelChange?: (channel: Channel) => void;
+// Thread panel component
+function ThreadPanel({
+  parentMessage,
+  replies,
+  loading,
+  currentUserId,
+  isOwner,
+  onClose,
+  onSendReply,
+  onDeleteReply,
+}: {
+  parentMessage: Message;
+  replies: Message[];
+  loading: boolean;
+  currentUserId?: string;
+  isOwner: boolean;
+  onClose: () => void;
+  onSendReply: (content: string) => void;
+  onDeleteReply: (msg: Message) => void;
+}) {
+  const [replyInput, setReplyInput] = useState("");
+  const repliesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    repliesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [replies]);
+
+  const handleSend = () => {
+    const content = replyInput.trim();
+    if (!content) return;
+    onSendReply(content);
+    setReplyInput("");
+  };
+
+  return (
+    <div className="w-80 border-l border-border bg-card flex flex-col h-full animate-slide-in-right">
+      {/* Header */}
+      <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="font-semibold text-sm">Thread</h3>
+        <button
+          onClick={onClose}
+          className="p-1 rounded hover:bg-secondary transition-colors text-muted hover:text-foreground"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Parent message */}
+      <div className="shrink-0 px-4 py-3 border-b border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-6 h-6 rounded-full overflow-hidden bg-secondary">
+            {parentMessage.sender_avatar ? (
+              <Image
+                src={parentMessage.sender_avatar}
+                alt={parentMessage.sender_username}
+                width={24}
+                height={24}
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-muted">
+                {parentMessage.sender_username?.[0]?.toUpperCase()}
+              </div>
+            )}
+          </div>
+          <span className="font-medium text-sm">{parentMessage.sender_username}</span>
+        </div>
+        <p className="text-sm text-foreground/90">{parentMessage.content}</p>
+      </div>
+
+      {/* Replies */}
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : replies.length === 0 ? (
+          <p className="text-center text-sm text-muted py-4">No replies yet</p>
+        ) : (
+          replies.map((reply) => (
+            <ThreadReplyItem
+              key={reply.id}
+              msg={reply}
+              currentUserId={currentUserId}
+              isOwner={isOwner}
+              onDelete={onDeleteReply}
+            />
+          ))
+        )}
+        <div ref={repliesEndRef} />
+      </div>
+
+      {/* Reply input */}
+      <div className="shrink-0 p-3 border-t border-border">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={replyInput}
+            onChange={(e) => setReplyInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
+            placeholder="Reply in thread..."
+            className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary border border-border focus:border-accent focus:outline-none"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!replyInput.trim()}
+            className="px-3 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default function ChatWindow({ 
-  loopDetails, 
-  initialMessages, 
+// Delete confirmation modal
+function DeleteModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+      <div className="bg-card border border-border rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+        <h3 className="text-lg font-semibold mb-2">Delete Message</h3>
+        <p className="text-muted text-sm mb-4">Are you sure you want to delete this message? This action cannot be undone.</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm rounded-lg hover:bg-secondary transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Create channel modal
+function CreateChannelModal({
+  projectId,
+  onClose,
+  onCreated,
+}: {
+  projectId: string;
+  onClose: () => void;
+  onCreated: (channel: Channel) => void;
+}) {
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleCreate = async () => {
+    const channelName = name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    if (!channelName) {
+      setError("Channel name is required");
+      return;
+    }
+
+    setCreating(true);
+    setError("");
+    try {
+      const channel = await api.createChannel({ project_id: projectId, name: channelName });
+      onCreated(channel);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create channel");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
+      <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
+        <h3 className="text-lg font-semibold mb-4">Create Channel</h3>
+        <div className="mb-4">
+          <label className="block text-sm text-muted mb-1">Channel Name</label>
+          <div className="flex items-center gap-2">
+            <span className="text-muted">#</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              placeholder="general"
+              className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary border border-border focus:border-accent focus:outline-none"
+              autoFocus
+            />
+          </div>
+          {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg hover:bg-secondary transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={creating || !name.trim()}
+            className="px-4 py-2 text-sm rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {creating ? "Creating..." : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Message skeleton for loading state
+function MessageSkeleton() {
+  return (
+    <div className="flex gap-3 p-2 animate-pulse">
+      <div className="shrink-0 w-9 h-9 rounded-full bg-secondary" />
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-20 bg-secondary rounded" />
+          <div className="h-3 w-12 bg-secondary rounded" />
+        </div>
+        <div className="h-4 w-3/4 bg-secondary rounded" />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export default function ChatWindow({
+  loopDetails,
+  initialMessages = [],
   channels = [],
   activeChannel,
   onMembershipChanged,
-  onChannelChange 
+  onChannelChange,
+  currentUserId,
 }: ChatWindowProps) {
   const router = useRouter();
+
+  // Core state
   const [message, setMessage] = useState("");
-  // OPTIMIZATION: Use initial messages if provided, skip separate fetch
-  const [messages, setMessages] = useState<Message[]>(initialMessages || []);
-  const [loading, setLoading] = useState(!initialMessages && loopDetails.is_member);
   const [connected, setConnected] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verification, setVerification] = useState<VerifyAccessResponse | null>(null);
   const [joining, setJoining] = useState(false);
-  const [showChannelPanel, setShowChannelPanel] = useState(true);
+
+  // Channel state
   const [currentChannel, setCurrentChannel] = useState<Channel | undefined>(activeChannel);
+  const [channelList, setChannelList] = useState<Channel[]>(channels);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showChannelPanel, setShowChannelPanel] = useState(true);
+
+  // Message state - keyed by channel
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Initialize from cache or initial messages
+    const channelId = activeChannel?.id || loopDetails.id;
+    const cached = getCachedMessages(channelId);
+    if (cached.length > 0) return cached;
+    if (initialMessages.length > 0) {
+      setCachedMessages(channelId, initialMessages);
+      return initialMessages;
+    }
+    return [];
+  });
+  const [channelLoading, setChannelLoading] = useState(false);
+
+  // Thread state
+  const [threadParent, setThreadParent] = useState<Message | null>(null);
+  const [threadReplies, setThreadReplies] = useState<Message[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const currentChannelRef = useRef<Channel | undefined>(currentChannel);
 
+  // Derived state
+  const isOwner = currentUserId === loopDetails.owner_id;
+  const channelId = currentChannel?.id || loopDetails.id;
+
+  // Keep ref in sync
+  useEffect(() => {
+    currentChannelRef.current = currentChannel;
+  }, [currentChannel]);
+
+  // Scroll to bottom
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Update current channel when activeChannel prop changes
+  // Initialize on loop change - DON'T tear down WebSocket
   useEffect(() => {
-    if (activeChannel) {
+    // Reset channel-related state
+    setCurrentChannel(activeChannel);
+    setChannelList(channels);
+    setThreadParent(null);
+    setThreadReplies([]);
+    setVerification(null);
+
+    // Initialize messages from cache or initial
+    const cid = activeChannel?.id || loopDetails.id;
+    const cached = getCachedMessages(cid);
+    if (cached.length > 0) {
+      setMessages(cached);
+    } else if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+      setCachedMessages(cid, initialMessages);
+    } else {
+      setMessages([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loopDetails.id]);
+
+  // Update channels when prop changes
+  useEffect(() => {
+    if (channels.length > 0) {
+      setChannelList(channels);
+    }
+  }, [channels]);
+
+  // Update active channel from prop
+  useEffect(() => {
+    if (activeChannel && activeChannel.id !== currentChannel?.id) {
       setCurrentChannel(activeChannel);
     }
-  }, [activeChannel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChannel?.id]);
 
-  // OPTIMIZATION: Only fetch messages if not provided initially
-  useEffect(() => {
-    // If we already have messages from parent, skip fetch
-    if (initialMessages && initialMessages.length > 0) {
-      setMessages(initialMessages);
-      setLoading(false);
-      return;
-    }
-
-    const fetchMessages = async () => {
-      try {
-        if (currentChannel) {
-          const data = await api.getChannelMessages(currentChannel.id);
-          setMessages(data.messages || []);
-        } else {
-          const data = await api.getMessages(loopDetails.name);
-          setMessages(data.messages || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (loopDetails.is_member && !initialMessages) {
-      fetchMessages();
-    } else {
-      setLoading(false);
-    }
-  }, [loopDetails.name, loopDetails.is_member, initialMessages, currentChannel]);
-
-  // Connect WebSocket with channel support
+  // WebSocket connection - stable, doesn't reconnect on channel change
   useEffect(() => {
     if (!loopDetails.is_member) return;
 
+    // Connect to project, not specific channel
     const ws = createWebSocket(loopDetails.id, currentChannel?.id);
     if (!ws) return;
 
     ws.onopen = () => {
-      console.log("[WS] Connected to loop:", loopDetails.name, "channel:", currentChannel?.name);
       setConnected(true);
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+
         if (data.type === "message" && data.payload) {
-          // Only add message if it's for the current channel
-          if (!data.channel_id || data.channel_id === currentChannel?.id) {
-            setMessages((prev) => [...prev, data.payload]);
+          const msg = data.payload;
+          const msgChannelId = data.channel_id || msg.channel_id;
+
+          // Handle thread reply
+          if (msg.parent_id) {
+            // Update thread replies if viewing this thread
+            setThreadReplies((prev) => {
+              const exists = prev.some(
+                (m) => m.id === msg.id || (m.id.startsWith("temp-") && m.content === msg.content)
+              );
+              if (exists) {
+                return prev.map((m) =>
+                  m.id.startsWith("temp-") && m.content === msg.content ? msg : m
+                );
+              }
+              return [...prev, msg];
+            });
+
+            // Update reply count on parent - only for others' messages
+            if (msg.sender_id !== currentUserId) {
+              const cid = msgChannelId || currentChannelRef.current?.id || loopDetails.id;
+              updateCachedMessage(cid, (prev) =>
+                prev.map((m) =>
+                  m.id === msg.parent_id
+                    ? { ...m, reply_count: (m.reply_count || 0) + 1 }
+                    : m
+                )
+              );
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === msg.parent_id
+                    ? { ...m, reply_count: (m.reply_count || 0) + 1 }
+                    : m
+                )
+              );
+            }
+          } else {
+            // Regular message - only add if for current channel
+            const targetChannelId = currentChannelRef.current?.id || loopDetails.id;
+            if (!msgChannelId || msgChannelId === targetChannelId) {
+              setMessages((prev) => {
+                const exists = prev.some(
+                  (m) => m.id === msg.id || (m.id.startsWith("temp-") && m.content === msg.content)
+                );
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id.startsWith("temp-") && m.content === msg.content ? msg : m
+                  );
+                }
+                return [...prev, msg];
+              });
+              // Also update cache
+              updateCachedMessage(targetChannelId, (prev) => {
+                const exists = prev.some(
+                  (m) => m.id === msg.id || (m.id.startsWith("temp-") && m.content === msg.content)
+                );
+                if (exists) {
+                  return prev.map((m) =>
+                    m.id.startsWith("temp-") && m.content === msg.content ? msg : m
+                  );
+                }
+                return [...prev, msg];
+              });
+            }
           }
+        } else if (data.type === "message_deleted" && data.message_id) {
+          // Handle deletion - update both state and cache
+          const updateDelete = (prev: Message[]) =>
+            prev.map((m) =>
+              m.id === data.message_id ? { ...m, content: "[Message deleted]" } : m
+            );
+          setMessages(updateDelete);
+          setThreadReplies(updateDelete);
+          // Update all channel caches
+          messageCache.forEach((_, key) => {
+            updateCachedMessage(key, updateDelete);
+          });
         } else if (data.type === "channel_switched") {
-          console.log("[WS] Switched to channel:", data.channel_id);
+          // Server confirmed channel switch
         }
       } catch (err) {
         console.error("[WS] Parse error:", err);
@@ -177,12 +698,11 @@ export default function ChatWindow({
     };
 
     ws.onclose = () => {
-      console.log("[WS] Disconnected");
       setConnected(false);
     };
 
     ws.onerror = () => {
-      // WebSocket errors are expected during React re-renders in dev mode
+      // Ignore - expected during React re-renders
     };
 
     wsRef.current = ws;
@@ -190,20 +710,34 @@ export default function ChatWindow({
     return () => {
       ws.close();
     };
-  }, [loopDetails.id, loopDetails.name, loopDetails.is_member, currentChannel?.id, currentChannel?.name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loopDetails.id, loopDetails.is_member]);
 
-  // Scroll to bottom when new messages arrive
+  // Scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Handle channel selection - NO WebSocket reconnect
   const handleChannelSelect = useCallback(async (channel: Channel) => {
     if (channel.id === currentChannel?.id) return;
-    
-    setLoading(true);
+
+    // 1. Update current channel immediately
     setCurrentChannel(channel);
-    
-    // Switch channel via WebSocket if connected
+    currentChannelRef.current = channel;
+
+    // 2. Check cache first - instant switch!
+    const cached = getCachedMessages(channel.id);
+    if (cached.length > 0) {
+      setMessages(cached);
+      setChannelLoading(false);
+    } else {
+      // IMPORTANT: Clear old messages immediately to prevent flash of wrong channel's messages
+      setMessages([]);
+      setChannelLoading(true);
+    }
+
+    // 3. Switch channel on server via WebSocket
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: "switch_channel",
@@ -211,35 +745,160 @@ export default function ChatWindow({
       }));
     }
 
-    // Fetch messages for new channel
+    // 4. Fetch fresh messages (will update cache)
     try {
       const data = await api.getChannelMessages(channel.id);
-      setMessages(data.messages || []);
+      const newMessages = data.messages || [];
+      setCachedMessages(channel.id, newMessages);
+      // Only update if still on this channel
+      if (currentChannelRef.current?.id === channel.id) {
+        setMessages(newMessages);
+      }
     } catch (err) {
       console.error("Failed to fetch channel messages:", err);
+      // Keep cached data if available
+      if (!cached.length) {
+        setMessages([]);
+      }
     } finally {
-      setLoading(false);
+      setChannelLoading(false);
     }
+
+    // Close thread panel
+    setThreadParent(null);
+    setThreadReplies([]);
 
     // Notify parent
     onChannelChange?.(channel);
   }, [currentChannel?.id, onChannelChange]);
 
-  const handleSend = useCallback(() => {
-    const content = message.trim();
-    if (!content || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+  // Handle opening a thread
+  const handleViewThread = useCallback(async (msg: Message) => {
+    setThreadParent(msg);
+    setThreadReplies([]);
 
-    // Send via WebSocket - instant! No HTTP overhead
+    // Can't fetch for temp messages
+    if (msg.id.startsWith("temp-")) return;
+
+    setThreadLoading(true);
+    try {
+      const data = await api.getThreadReplies(msg.id);
+      setThreadReplies(data.replies || []);
+    } catch (err) {
+      console.error("Failed to load thread:", err);
+    } finally {
+      setThreadLoading(false);
+    }
+  }, []);
+
+  // Handle sending thread reply
+  const handleSendThreadReply = useCallback((content: string) => {
+    if (!threadParent || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
     wsRef.current.send(JSON.stringify({
       type: "message",
-      content: content,
+      content,
+      channel_id: currentChannel?.id,
+      parent_id: threadParent.id,
+    }));
+
+    // Optimistic reply
+    const optimisticReply: Message = {
+      id: `temp-${Date.now()}`,
+      content,
+      sender_id: currentUserId || "",
+      sender_username: "You",
+      sender_avatar: "",
+      created_at: new Date().toISOString(),
+      parent_id: threadParent.id,
+    };
+    setThreadReplies((prev) => [...prev, optimisticReply]);
+
+    // Optimistically update reply count
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === threadParent.id
+          ? { ...m, reply_count: (m.reply_count || 0) + 1 }
+          : m
+      )
+    );
+    updateCachedMessage(channelId, (prev) =>
+      prev.map((m) =>
+        m.id === threadParent.id
+          ? { ...m, reply_count: (m.reply_count || 0) + 1 }
+          : m
+      )
+    );
+  }, [threadParent, currentChannel?.id, currentUserId, channelId]);
+
+  // Handle delete - show modal first
+  const handleDeleteClick = useCallback((msg: Message) => {
+    if (msg.id.startsWith("temp-")) return;
+    setDeleteTarget(msg);
+  }, []);
+
+  // Confirm delete
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+
+    const msgId = deleteTarget.id;
+    setDeleteTarget(null);
+
+    // Optimistic delete - update UI immediately
+    const updateDelete = (prev: Message[]) =>
+      prev.map((m) => (m.id === msgId ? { ...m, content: "[Message deleted]" } : m));
+
+    setMessages(updateDelete);
+    setThreadReplies(updateDelete);
+    updateCachedMessage(channelId, updateDelete);
+
+    // Actually delete
+    try {
+      await api.deleteMessage(msgId);
+    } catch (err) {
+      console.error("Failed to delete:", err);
+      // Revert would be complex - server broadcast will correct if needed
+    }
+  }, [deleteTarget, channelId]);
+
+  // Handle channel creation
+  const handleChannelCreated = useCallback((channel: Channel) => {
+    setChannelList((prev) => [...prev, channel]);
+  }, []);
+
+  // Handle send message
+  const handleSend = useCallback(() => {
+    const content = message.trim();
+    if (!content) return;
+
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.warn("[Chat] WebSocket not ready");
+      return;
+    }
+
+    // Send via WebSocket
+    wsRef.current.send(JSON.stringify({
+      type: "message",
+      content,
       channel_id: currentChannel?.id,
     }));
 
-    // Clear input immediately (message will appear via WS broadcast)
-    setMessage("");
-  }, [message, currentChannel?.id]);
+    // Optimistic update
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      content,
+      sender_id: currentUserId || "",
+      sender_username: "You",
+      sender_avatar: "",
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    updateCachedMessage(channelId, (prev) => [...prev, optimisticMsg]);
 
+    setMessage("");
+  }, [message, currentChannel?.id, currentUserId, channelId]);
+
+  // Handle key press
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -247,6 +906,7 @@ export default function ChatWindow({
     }
   }, [handleSend]);
 
+  // Handle verify access
   const handleVerify = async () => {
     setVerifying(true);
     try {
@@ -259,11 +919,11 @@ export default function ChatWindow({
     }
   };
 
+  // Handle join loop
   const handleJoin = async () => {
     setJoining(true);
     try {
       await api.joinLoop(loopDetails.name);
-      // Refresh the page to reload loop details with membership
       if (onMembershipChanged) {
         onMembershipChanged();
       } else {
@@ -277,6 +937,7 @@ export default function ChatWindow({
     }
   };
 
+  // Non-member view
   if (!loopDetails.is_member) {
     return (
       <div className="flex flex-col h-full bg-secondary/20 items-center justify-center">
@@ -286,96 +947,85 @@ export default function ChatWindow({
           </div>
           <h2 className="text-2xl font-bold mb-3">Access Required</h2>
           <p className="text-muted mb-6">
-            You need to meet the contribution requirements to join this loop.
+            This loop requires verification of your GitHub contributions to join.
           </p>
 
           {!verification ? (
             <button
               onClick={handleVerify}
               disabled={verifying}
-              className="px-6 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors disabled:opacity-50"
+              className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors disabled:opacity-50"
             >
               {verifying ? "Checking..." : "Check Eligibility"}
             </button>
           ) : verification.is_member ? (
-            // User is already a member - trigger parent refresh to show chat
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm bg-emerald-500/10 text-emerald-500">
-                ✓ Already a Member
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 text-green-400 font-medium mb-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Already a Member
+                </div>
+                <p className="text-sm text-muted">You have access to this loop.</p>
               </div>
               <button
-                onClick={() => onMembershipChanged?.()}
-                className="w-full py-3 rounded-xl bg-accent text-white hover:bg-accent-hover font-medium transition-colors"
+                onClick={() => window.location.reload()}
+                className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium"
               >
                 Open Chat
               </button>
             </div>
+          ) : verification.can_join ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 text-green-400 font-medium mb-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Eligible!
+                </div>
+                <p className="text-sm text-muted">{verification.message}</p>
+              </div>
+              <button
+                onClick={handleJoin}
+                disabled={joining}
+                className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium disabled:opacity-50"
+              >
+                {joining ? "Joining..." : "Join Loop"}
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
-              {/* Status */}
-              <div
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${verification.can_join
-                  ? "bg-emerald-500/10 text-emerald-500"
-                  : "bg-amber-500/10 text-amber-500"
-                  }`}
-              >
-                {verification.can_join ? "✓ Eligible" : "✗ Not Eligible"}
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <div className="flex items-center gap-2 text-red-400 font-medium mb-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Not Eligible
+                </div>
+                <p className="text-sm text-muted">{verification.message}</p>
               </div>
 
-              {/* Requirements */}
-              {verification.results.length > 0 && (
-                <div className="space-y-2 text-left">
+              {verification.results && verification.results.length > 0 && (
+                <div className="text-left space-y-2">
                   {verification.results.map((result, i) => (
                     <div
                       key={i}
-                      className={`p-3 rounded-lg border ${result.passed
-                        ? "bg-emerald-500/5 border-emerald-500/20"
-                        : "bg-card border-border"
-                        }`}
+                      className={`p-3 rounded-lg ${
+                        result.passed ? "bg-green-500/10" : "bg-secondary"
+                      }`}
                     >
-                      <div className="flex items-center gap-2 text-sm">
-                        {result.passed ? (
-                          <span className="text-emerald-500">✓</span>
-                        ) : (
-                          <span className="text-muted">○</span>
-                        )}
-                        <span className="text-foreground">{result.message}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{result.passed ? "✅" : "❌"}</span>
+                        <span className="text-sm">{result.criteria}</span>
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${result.passed ? "bg-emerald-500" : "bg-accent"
-                              }`}
-                            style={{
-                              width: `${Math.min(
-                                (result.actual / result.required) * 100,
-                                100
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted">
-                          {result.actual}/{result.required}
-                        </span>
-                      </div>
+                      <p className="text-xs text-muted mt-1">
+                        {result.actual} / {result.required} required
+                      </p>
                     </div>
                   ))}
                 </div>
-              )}
-
-              {/* Action */}
-              {verification.can_join ? (
-                <button
-                  onClick={handleJoin}
-                  disabled={joining}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors disabled:opacity-50"
-                >
-                  {joining ? "Joining..." : "Join Loop"}
-                </button>
-              ) : (
-                <p className="text-sm text-muted">
-                  Keep contributing to this repository to unlock access!
-                </p>
               )}
             </div>
           )}
@@ -384,147 +1034,167 @@ export default function ChatWindow({
     );
   }
 
+  // Member view - main chat
   return (
-    <div className="flex h-full bg-background overflow-hidden relative">
-      {/* Channels Sidebar */}
-      {channels.length > 0 && showChannelPanel && (
-        <div className="w-52 flex-shrink-0 border-r border-border bg-card/30 flex flex-col">
-          <div className="p-3 border-b border-border flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Channels</span>
-            <button 
-              onClick={() => setShowChannelPanel(false)}
-              className="p-1 hover:bg-secondary rounded transition-colors"
-            >
-              <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-            </button>
+    <div className="flex h-full overflow-hidden">
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <DeleteModal
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* Channel creation modal */}
+      {showCreateChannel && (
+        <CreateChannelModal
+          projectId={loopDetails.id}
+          onClose={() => setShowCreateChannel(false)}
+          onCreated={handleChannelCreated}
+        />
+      )}
+
+      {/* Channels sidebar */}
+      {showChannelPanel && channelList.length > 0 && (
+        <div className="w-56 shrink-0 border-r border-border bg-card/30 flex flex-col h-full">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Channels</h3>
+            {isOwner && (
+              <button
+                onClick={() => setShowCreateChannel(true)}
+                className="p-1 rounded hover:bg-secondary transition-colors text-muted hover:text-foreground"
+                title="Create channel"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {channels.map((channel) => (
+            {channelList.map((channel) => (
               <ChannelItem
                 key={channel.id}
                 channel={channel}
                 isActive={currentChannel?.id === channel.id}
-                onSelect={handleChannelSelect}
+                onClick={() => handleChannelSelect(channel)}
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-mesh pointer-events-none" />
-
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col h-full min-w-0">
         {/* Header */}
-        <div className="relative z-10 flex-shrink-0 flex items-center gap-4 px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm">
-          {channels.length > 0 && !showChannelPanel && (
-            <button 
-              onClick={() => setShowChannelPanel(true)}
-              className="p-2 hover:bg-secondary rounded-lg transition-colors"
-              title="Show channels"
-            >
-              <svg className="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
-          <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
-            {currentChannel ? "#" : "💬"}
+        <div className="shrink-0 px-6 py-4 border-b border-border bg-card/50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {channelList.length > 0 && (
+              <button
+                onClick={() => setShowChannelPanel(!showChannelPanel)}
+                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted hover:text-foreground"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+              </button>
+            )}
+            <div>
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                {currentChannel ? (
+                  <>
+                    <span className="text-muted">#</span>
+                    {currentChannel.name}
+                  </>
+                ) : (
+                  loopDetails.name
+                )}
+              </h2>
+              <p className="text-xs text-muted">{loopDetails.members?.length || 0} members</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-semibold text-foreground">
-              {currentChannel ? `#${currentChannel.name}` : loopDetails.name}
-            </h2>
-            <p className="text-sm text-muted">
-              {currentChannel?.description || `${loopDetails.members.length} member${loopDetails.members.length !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-colors ${connected
-                ? "bg-emerald-500/10 text-emerald-500"
-                : "bg-secondary text-muted"
-                }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-muted"
-                  }`}
-              />
-              {connected ? "Live" : "Connecting..."}
-            </span>
+          <div className={`flex items-center gap-2 text-xs ${connected ? "text-green-400" : "text-amber-400"}`}>
+            <span className={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-amber-400 animate-pulse"}`} />
+            {connected ? "Live" : "Reconnecting..."}
           </div>
         </div>
 
-        {/* Messages - this is the only scrollable area */}
-        <div className="relative z-0 flex-1 min-h-0 overflow-y-auto p-6 scroll-smooth">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            </div>
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 custom-scrollbar">
+          {channelLoading && messages.length === 0 ? (
+            // Show skeletons only if no cached messages
+            <>
+              <MessageSkeleton />
+              <MessageSkeleton />
+              <MessageSkeleton />
+            </>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="h-full flex flex-col items-center justify-center text-center py-12">
               <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl mb-4">
-                {currentChannel ? "#" : "💬"}
+                💬
               </div>
-              <h3 className="text-lg font-medium mb-2 text-foreground">
-                Welcome to {currentChannel ? `#${currentChannel.name}` : loopDetails.name}
+              <h3 className="font-medium text-foreground mb-1">
+                {currentChannel ? `Welcome to #${currentChannel.name}` : "Start the conversation"}
               </h3>
-              <p className="text-muted max-w-md">
-                {currentChannel?.description || "This is the beginning of your conversation. Start chatting with other verified contributors!"}
-              </p>
+              <p className="text-sm text-muted">Be the first to send a message!</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {messages.map((msg) => (
-                <MessageItem key={msg.id} msg={msg} />
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
+            messages.map((msg) => (
+              <MessageItem
+                key={msg.id}
+                msg={msg}
+                currentUserId={currentUserId}
+                isOwner={isOwner}
+                onReply={handleViewThread}
+                onDelete={handleDeleteClick}
+              />
+            ))
           )}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input - fixed at bottom */}
-        <div className="relative z-10 flex-shrink-0 p-4 border-t border-border bg-card/50 backdrop-blur-md">
-          <div className="flex items-end gap-3 max-w-5xl mx-auto">
+        {/* Input area */}
+        <div className="shrink-0 px-4 py-4 border-t border-border bg-card/30">
+          <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={connected ? `Message ${currentChannel ? `#${currentChannel.name}` : loopDetails.name}` : "Connecting..."}
+                placeholder={currentChannel ? `Message #${currentChannel.name}` : "Type a message..."}
+                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border focus:border-accent focus:outline-none resize-none text-sm min-h-[48px] max-h-32"
                 rows={1}
-                disabled={!connected}
-                className="w-full px-4 py-3 bg-secondary/50 border border-transparent focus:border-accent focus:bg-background rounded-2xl text-foreground placeholder-muted focus:outline-none transition-all resize-none disabled:opacity-50 shadow-sm"
-                style={{ minHeight: "52px", maxHeight: "150px" }}
               />
             </div>
             <button
               onClick={handleSend}
               disabled={!message.trim() || !connected}
-              className="p-3.5 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95 shadow-lg shadow-accent/20"
+              className="shrink-0 w-12 h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
           </div>
-          <p className="text-xs text-muted mt-2 text-center opacity-60">
-            Press Enter to send • Shift+Enter for new line
-          </p>
         </div>
       </div>
+
+      {/* Thread panel */}
+      {threadParent && (
+        <ThreadPanel
+          parentMessage={threadParent}
+          replies={threadReplies}
+          loading={threadLoading}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+          onClose={() => {
+            setThreadParent(null);
+            setThreadReplies([]);
+          }}
+          onSendReply={handleSendThreadReply}
+          onDeleteReply={handleDeleteClick}
+        />
+      )}
     </div>
   );
 }

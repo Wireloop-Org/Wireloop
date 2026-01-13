@@ -9,8 +9,6 @@ import {
   clearToken,
   InitData,
   LoopFullData,
-  Message,
-  Channel,
 } from "@/lib/api";
 import { useLoopsStore } from "@/store/useLoopsStore";
 import ChatWindow from "@/components/ChatWindow";
@@ -23,6 +21,9 @@ interface SidebarProject {
   role: string;
 }
 
+// Loop data cache - persists across component re-renders
+const loopDataCache = new Map<string, LoopFullData>();
+
 export default function LoopPage() {
   const router = useRouter();
   const params = useParams();
@@ -33,23 +34,26 @@ export default function LoopPage() {
     selectedLoop: storeLoop, 
     selectLoop, 
     prefetchLoop,
-    isLoopLoading: storeLoading 
   } = useLoopsStore();
 
   // Core state
   const [initData, setInitData] = useState<InitData | null>(null);
-  const [loopData, setLoopData] = useState<LoopFullData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loopData, setLoopData] = useState<LoopFullData | null>(() => {
+    // Initialize from cache if available
+    return loopDataCache.get(loopName) || null;
+  });
+  const [loading, setLoading] = useState(!loopDataCache.has(loopName));
   const [error, setError] = useState<string | null>(null);
 
-  // Track if initial messages were passed to chat
-  const initialMessagesRef = useRef<Message[] | null>(null);
+  // Track current loop name for stale closure prevention
+  const loopNameRef = useRef(loopName);
+  loopNameRef.current = loopName;
 
   // Sync store loop to local state
   useEffect(() => {
     if (storeLoop && storeLoop.name === loopName) {
       setLoopData(storeLoop);
-      initialMessagesRef.current = storeLoop.messages;
+      loopDataCache.set(loopName, storeLoop);
       setLoading(false);
     }
   }, [storeLoop, loopName]);
@@ -79,8 +83,14 @@ export default function LoopPage() {
       return;
     }
 
-    // Only show loading if explicitly requested (first load) and no cached data
-    if (showLoading && !storeLoop) {
+    // Check cache first - instant switch!
+    const cached = loopDataCache.get(loopName);
+    if (cached) {
+      setLoopData(cached);
+      setLoading(false);
+      // Background refresh
+      selectLoop(loopName).catch(() => {});
+    } else if (showLoading) {
       setLoading(true);
     }
 
@@ -88,8 +98,8 @@ export default function LoopPage() {
       // Fetch init only if not already cached
       const initPromise = initData ? Promise.resolve(initData) : api.getInit();
       
-      // Use store's selectLoop for caching benefits
-      const loopPromise = selectLoop(loopName);
+      // Use store's selectLoop for caching benefits (if not cached)
+      const loopPromise = cached ? Promise.resolve() : selectLoop(loopName);
       
       const [init] = await Promise.all([initPromise, loopPromise]);
 
@@ -110,7 +120,7 @@ export default function LoopPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, loopName, initData, selectLoop, storeLoop]);
+  }, [router, loopName, initData, selectLoop]);
 
   // Initial load - only on first mount
   useEffect(() => {
@@ -118,10 +128,20 @@ export default function LoopPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Loop name change - use store for instant switching
+  // Loop name change - instant switch with cache
   useEffect(() => {
     if (loopData && loopData.name !== loopName) {
-      selectLoop(loopName);
+      // Check cache first
+      const cached = loopDataCache.get(loopName);
+      if (cached) {
+        setLoopData(cached);
+        setLoading(false);
+        // Background refresh
+        selectLoop(loopName).catch(() => {});
+      } else {
+        setLoading(true);
+        selectLoop(loopName).catch(() => {});
+      }
     }
   }, [loopName, loopData, selectLoop]);
 
@@ -142,8 +162,8 @@ export default function LoopPage() {
     router.push("/");
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - only show full-screen loader on first load with no data
+  if (loading && !loopData) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -154,15 +174,15 @@ export default function LoopPage() {
     );
   }
 
-  // Error state
-  if (error || !initData) {
+  // Error state - only show if we have an explicit error AND no cached data
+  if (error && !loopData) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-4xl mx-auto mb-6">
             {error === "Loop not found" ? "🔍" : "⚠️"}
           </div>
-          <h2 className="text-2xl font-bold mb-3 text-foreground">{error || "Something went wrong"}</h2>
+          <h2 className="text-2xl font-bold mb-3 text-foreground">{error}</h2>
           <p className="text-muted mb-6">
             {error === "Loop not found"
               ? "The loop you are looking for does not exist."
@@ -179,21 +199,22 @@ export default function LoopPage() {
     );
   }
 
-  const profile = initData.profile;
-  const displayName = profile.display_name || profile.username;
-  const avatarUrl = profile.avatar_url;
+  // Get profile info - fallback to placeholders if not loaded yet
+  const profile = initData?.profile;
+  const displayName = profile?.display_name || profile?.username || "User";
+  const avatarUrl = profile?.avatar_url;
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
       <aside className="w-72 border-r border-border bg-card/50 flex flex-col h-full z-20">
         {/* Logo */}
-        <div className="flex-shrink-0 p-4 border-b border-border">
+        <div className="shrink-0 p-4 border-b border-border">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
+            <div className="w-9 h-9 rounded-lg bg-linear-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -203,7 +224,7 @@ export default function LoopPage() {
         </div>
 
         {/* Back to Dashboard */}
-        <div className="flex-shrink-0 p-4 border-b border-border">
+        <div className="shrink-0 p-4 border-b border-border">
           <button
             onClick={() => router.push("/")}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
@@ -226,31 +247,43 @@ export default function LoopPage() {
         </div>
 
         {/* User */}
-        <div className="flex-shrink-0 p-4 border-t border-border bg-card">
-          <button
-            onClick={() => router.push("/profile")}
-            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary transition-colors group"
-          >
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-secondary relative border border-border group-hover:border-accent/50 transition-colors">
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm text-muted">
-                  {displayName[0]?.toUpperCase()}
+        <div className="shrink-0 p-4 border-t border-border bg-card">
+          {profile ? (
+            <>
+              <button
+                onClick={() => router.push("/profile")}
+                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary transition-colors group"
+              >
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-secondary relative border border-border group-hover:border-accent/50 transition-colors">
+                  {avatarUrl ? (
+                    <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+                      {displayName[0]?.toUpperCase()}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="flex-1 text-left min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
+                  <div className="text-xs text-muted truncate">@{profile.username}</div>
+                </div>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full mt-2 px-4 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors font-medium"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 p-2 animate-pulse">
+              <div className="w-9 h-9 rounded-full bg-secondary" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-24 bg-secondary rounded" />
+                <div className="h-3 w-16 bg-secondary rounded" />
+              </div>
             </div>
-            <div className="flex-1 text-left min-w-0">
-              <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
-              <div className="text-xs text-muted truncate">@{profile.username}</div>
-            </div>
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full mt-2 px-4 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors font-medium"
-          >
-            Sign out
-          </button>
+          )}
         </div>
       </aside>
 
@@ -266,10 +299,11 @@ export default function LoopPage() {
               is_member: loopData.is_member,
               members: loopData.members,
             }}
-            initialMessages={initialMessagesRef.current || []}
+            initialMessages={loopData.messages || []}
             channels={loopData.channels || []}
             activeChannel={loopData.active_channel}
             onMembershipChanged={loadData}
+            currentUserId={initData?.profile?.id}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -279,7 +313,7 @@ export default function LoopPage() {
 
         {/* Members Panel (collapsible) */}
         {loopData && loopData.members.length > 0 && (
-          <div className="flex-shrink-0 relative z-30">
+          <div className="shrink-0 relative z-30">
             <MembersPanel members={loopData.members} />
           </div>
         )}

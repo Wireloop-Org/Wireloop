@@ -227,6 +227,14 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 		defer wg.Done()
 		t := time.Now()
 		channels, channelsErr = h.Queries.GetChannelsByProject(ctx, project.ID)
+		// Auto-create default channel for legacy loops without channels
+		if channelsErr == nil && len(channels) == 0 {
+			defaultCh, err := h.EnsureDefaultChannel(c, project.ID)
+			if err == nil && defaultCh != nil {
+				// Re-fetch channels after creating default
+				channels, channelsErr = h.Queries.GetChannelsByProject(ctx, project.ID)
+			}
+		}
 		timing["channels_ms"] = time.Since(t).Milliseconds()
 	}()
 
@@ -318,6 +326,11 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 	if isMember && messagesErr == nil && messages != nil {
 		msgList := make([]MessageResponse, len(messages))
 		for i, m := range messages {
+			var parentID *string
+			if m.ParentID.Valid {
+				pid := utils.FormatMessageID(m.ParentID.Int64)
+				parentID = &pid
+			}
 			msgList[i] = MessageResponse{
 				ID:             utils.FormatMessageID(m.ID),
 				Content:        m.Content,
@@ -325,6 +338,8 @@ func (h *Handler) HandleLoopFull(c *gin.Context) {
 				SenderUsername: m.SenderUsername,
 				SenderAvatar:   m.SenderAvatar.String,
 				CreatedAt:      m.CreatedAt.Time.Format(time.RFC3339),
+				ParentID:       parentID,
+				ReplyCount:     int(m.ReplyCount.Int32),
 			}
 		}
 		// Reverse to chronological order

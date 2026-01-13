@@ -27,12 +27,16 @@ type Membership struct {
 }
 
 type Message struct {
-	ID        int64
-	ProjectID pgtype.UUID
-	ChannelID pgtype.UUID
-	SenderID  pgtype.UUID
-	Content   string
-	CreatedAt pgtype.Timestamptz
+	ID         int64
+	ProjectID  pgtype.UUID
+	ChannelID  pgtype.UUID
+	SenderID   pgtype.UUID
+	Content    string
+	ParentID   pgtype.Int8
+	ReplyCount pgtype.Int4
+	IsDeleted  pgtype.Bool
+	DeletedAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
 }
 
 type Project struct {
