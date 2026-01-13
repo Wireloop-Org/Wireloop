@@ -175,6 +175,9 @@ export interface Message {
   sender_username: string;
   sender_avatar: string;
   created_at: string;
+  channel_id?: string;    // Channel this message belongs to
+  parent_id?: string;     // For thread replies
+  reply_count?: number;   // Number of replies
 }
 
 // Loop details types
@@ -480,6 +483,18 @@ export const api = {
     apiRequest<{ messages: Message[] }>(
       `/api/channels/${channelId}/messages?limit=${limit}&offset=${offset}`
     ),
+
+  // Thread / Replies
+  getThreadReplies: (messageId: string, limit = 50, offset = 0) =>
+    apiRequest<{ replies: Message[]; parent_id: string }>(
+      `/api/messages/${messageId}/replies?limit=${limit}&offset=${offset}`
+    ),
+
+  // Delete message (soft delete)
+  deleteMessage: (messageId: string) =>
+    apiRequest<{ message: string; id: string }>(`/api/messages/${messageId}`, {
+      method: "DELETE",
+    }),
 
   // Get loop data for a specific channel
   getLoopFullWithChannel: async (name: string, channelId?: string): Promise<LoopFullData> => {

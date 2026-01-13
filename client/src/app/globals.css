@@ -219,3 +219,63 @@ body {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Slide animations for panels */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Skeleton loading */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--secondary) 25%, var(--card) 50%, var(--secondary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Message transition */
+.message-appear {
+  animation: fade-in-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Channel switching transition */
+.channel-content {
+  transition: opacity 0.15s ease-out;
+}
+
+.channel-content.loading {
+  opacity: 0.6;
+}

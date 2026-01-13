@@ -46,6 +46,10 @@ CREATE TABLE messages (
     channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
     sender_id UUID REFERENCES users(id),
     content TEXT NOT NULL,
+    parent_id BIGINT REFERENCES messages(id) ON DELETE SET NULL,  -- For thread replies
+    reply_count INT DEFAULT 0,                                     -- Count of replies
+    is_deleted BOOLEAN DEFAULT FALSE,                              -- Soft delete flag
+    deleted_at TIMESTAMPTZ,                                        -- When deleted
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -95,8 +95,18 @@ ORDER BY similarity(name, sqlc.arg(q)) DESC
 LIMIT sqlc.arg(n);
 
 -- name: AddMessage :exec
-INSERT INTO messages (id, project_id, channel_id, sender_id, content)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO messages (id, project_id, channel_id, sender_id, content, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: AddReply :exec
+INSERT INTO messages (id, project_id, channel_id, sender_id, content, parent_id)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: IncrementReplyCount :exec
+UPDATE messages SET reply_count = reply_count + 1 WHERE id = $1;
+
+-- name: DecrementReplyCount :exec
+UPDATE messages SET reply_count = GREATEST(0, reply_count - 1) WHERE id = $1;
 
 
 -- name: IsMember :one
@@ -110,13 +120,45 @@ SELECT
     m.created_at,
     m.sender_id,
     m.channel_id,
+    m.parent_id,
+    m.reply_count,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
 JOIN users u ON m.sender_id = u.id
-WHERE m.channel_id = $1
+WHERE m.channel_id = $1 
+  AND m.parent_id IS NULL 
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
 ORDER BY m.created_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: GetThreadReplies :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
+    m.parent_id,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+WHERE m.parent_id = $1 
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
+ORDER BY m.created_at ASC
+LIMIT $2 OFFSET $3;
+
+-- name: GetMessageByID :one
+SELECT * FROM messages WHERE id = $1 LIMIT 1;
+
+-- name: SoftDeleteMessage :exec
+UPDATE messages 
+SET is_deleted = TRUE, deleted_at = NOW(), content = '[Message deleted]'
+WHERE id = $1;
+
+-- name: HardDeleteMessage :exec
+DELETE FROM messages WHERE id = $1;
 
 -- name: GetMessagesByProject :many
 SELECT 
@@ -125,11 +167,15 @@ SELECT
     m.created_at,
     m.sender_id,
     m.channel_id,
+    m.parent_id,
+    m.reply_count,
     u.username AS sender_username,
     u.avatar_url AS sender_avatar
 FROM messages m
 JOIN users u ON m.sender_id = u.id
-WHERE m.project_id = $1
+WHERE m.project_id = $1 
+  AND m.parent_id IS NULL
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
 ORDER BY m.created_at DESC
 LIMIT $2 OFFSET $3;
 
