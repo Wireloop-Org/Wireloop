@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   Message,
@@ -82,8 +83,12 @@ const MessageItem = memo(function MessageItem({
   const replyCount = msg.reply_count ?? 0;
 
   return (
-    <div className="group flex gap-3 hover:bg-secondary/30 p-2 rounded-lg transition-colors">
-      <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-secondary border border-border">
+    <motion.div 
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group flex gap-3 hover:bg-neutral-100/50 p-2 -mx-2 rounded-lg transition-colors"
+    >
+      <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-neutral-200 ring-2 ring-neutral-100">
         {msg.sender_avatar ? (
           <Image
             src={msg.sender_avatar}
@@ -94,24 +99,24 @@ const MessageItem = memo(function MessageItem({
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+          <div className="w-full h-full flex items-center justify-center text-sm text-neutral-500">
             {msg.sender_username?.[0]?.toUpperCase() || "?"}
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm text-foreground">
+          <span className="font-medium text-sm text-neutral-900">
             {msg.sender_username || "Unknown"}
           </span>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-neutral-400">
             {new Date(msg.created_at).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </span>
         </div>
-        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-muted italic" : "text-foreground/90"}`}>
+        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
           {msg.content}
         </p>
         
@@ -120,7 +125,7 @@ const MessageItem = memo(function MessageItem({
           {replyCount > 0 && (
             <button
               onClick={() => onReply(msg)}
-              className="text-xs text-accent hover:underline flex items-center gap-1"
+              className="text-xs text-neutral-500 hover:text-neutral-900 flex items-center gap-1 font-medium"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -134,7 +139,7 @@ const MessageItem = memo(function MessageItem({
             {!isDeleted && (
               <button
                 onClick={() => onReply(msg)}
-                className="text-xs text-muted hover:text-foreground flex items-center gap-1"
+                className="text-xs text-neutral-400 hover:text-neutral-700 flex items-center gap-1"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -145,7 +150,7 @@ const MessageItem = memo(function MessageItem({
             {canDelete && !isDeleted && (
               <button
                 onClick={() => onDelete(msg)}
-                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                className="text-xs text-red-400 hover:text-red-500 flex items-center gap-1"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -156,7 +161,7 @@ const MessageItem = memo(function MessageItem({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });
 
@@ -177,8 +182,8 @@ const ThreadReplyItem = memo(function ThreadReplyItem({
   const isDeleted = msg.content === "[Message deleted]";
 
   return (
-    <div className="group flex gap-2 hover:bg-secondary/30 p-2 rounded-lg transition-colors">
-      <div className="shrink-0 w-7 h-7 rounded-full overflow-hidden bg-secondary border border-border">
+    <div className="group flex gap-2 hover:bg-neutral-100/50 p-2 -mx-2 rounded-lg transition-colors">
+      <div className="shrink-0 w-7 h-7 rounded-full overflow-hidden bg-neutral-200 ring-1 ring-neutral-100">
         {msg.sender_avatar ? (
           <Image
             src={msg.sender_avatar}
@@ -189,17 +194,17 @@ const ThreadReplyItem = memo(function ThreadReplyItem({
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-muted">
+          <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500">
             {msg.sender_username?.[0]?.toUpperCase() || "?"}
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-xs text-foreground">
+          <span className="font-medium text-xs text-neutral-900">
             {msg.sender_username || "Unknown"}
           </span>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-neutral-400">
             {new Date(msg.created_at).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -208,13 +213,13 @@ const ThreadReplyItem = memo(function ThreadReplyItem({
           {canDelete && !isDeleted && (
             <button
               onClick={() => onDelete(msg)}
-              className="opacity-0 group-hover:opacity-100 ml-auto text-xs text-red-400 hover:text-red-300"
+              className="opacity-0 group-hover:opacity-100 ml-auto text-xs text-red-400 hover:text-red-500"
             >
               Delete
             </button>
           )}
         </div>
-        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-muted italic" : "text-foreground/90"}`}>
+        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
           {msg.content}
         </p>
       </div>
@@ -233,17 +238,18 @@ const ChannelItem = memo(function ChannelItem({
   onClick: () => void;
 }) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
+      whileHover={{ x: 2 }}
       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
         isActive
-          ? "bg-accent text-accent-foreground"
-          : "text-muted hover:text-foreground hover:bg-secondary"
+          ? "bg-neutral-900 text-white"
+          : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
       }`}
     >
-      <span className="text-muted-foreground">#</span>
-      <span className="truncate">{channel.name}</span>
-    </button>
+      <span className={isActive ? "text-neutral-400" : "text-neutral-400"}>#</span>
+      <span className="truncate font-medium">{channel.name}</span>
+    </motion.button>
   );
 });
 
@@ -282,24 +288,32 @@ function ThreadPanel({
   };
 
   return (
-    <div className="w-80 border-l border-border bg-card flex flex-col h-full animate-slide-in-right">
+    <motion.div 
+      initial={{ x: 320, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 320, opacity: 0 }}
+      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      className="w-80 border-l border-neutral-200 bg-white flex flex-col h-full"
+    >
       {/* Header */}
-      <div className="shrink-0 px-4 py-3 border-b border-border flex items-center justify-between">
-        <h3 className="font-semibold text-sm">Thread</h3>
-        <button
+      <div className="shrink-0 px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
+        <h3 className="font-semibold text-sm text-neutral-900">Thread</h3>
+        <motion.button
           onClick={onClose}
-          className="p-1 rounded hover:bg-secondary transition-colors text-muted hover:text-foreground"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          className="p-1 rounded hover:bg-neutral-200 transition-colors text-neutral-500 hover:text-neutral-900"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
+        </motion.button>
       </div>
 
       {/* Parent message */}
-      <div className="shrink-0 px-4 py-3 border-b border-border bg-secondary/30">
+      <div className="shrink-0 px-4 py-3 border-b border-neutral-200 bg-neutral-50/50">
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded-full overflow-hidden bg-secondary">
+          <div className="w-6 h-6 rounded-full overflow-hidden bg-neutral-200">
             {parentMessage.sender_avatar ? (
               <Image
                 src={parentMessage.sender_avatar}
@@ -310,24 +324,24 @@ function ThreadPanel({
                 unoptimized
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs text-muted">
+              <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500">
                 {parentMessage.sender_username?.[0]?.toUpperCase()}
               </div>
             )}
           </div>
-          <span className="font-medium text-sm">{parentMessage.sender_username}</span>
+          <span className="font-medium text-sm text-neutral-900">{parentMessage.sender_username}</span>
         </div>
-        <p className="text-sm text-foreground/90">{parentMessage.content}</p>
+        <p className="text-sm text-neutral-700">{parentMessage.content}</p>
       </div>
 
       {/* Replies */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
         {loading ? (
           <div className="flex items-center justify-center py-4">
-            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
           </div>
         ) : replies.length === 0 ? (
-          <p className="text-center text-sm text-muted py-4">No replies yet</p>
+          <p className="text-center text-sm text-neutral-500 py-4">No replies yet</p>
         ) : (
           replies.map((reply) => (
             <ThreadReplyItem
@@ -343,7 +357,7 @@ function ThreadPanel({
       </div>
 
       {/* Reply input */}
-      <div className="shrink-0 p-3 border-t border-border">
+      <div className="shrink-0 p-3 border-t border-neutral-200 bg-neutral-50">
         <div className="flex gap-2">
           <input
             type="text"
@@ -351,18 +365,20 @@ function ThreadPanel({
             onChange={(e) => setReplyInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
             placeholder="Reply in thread..."
-            className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary border border-border focus:border-accent focus:outline-none"
+            className="flex-1 px-3 py-2 text-sm rounded-lg bg-white border border-neutral-200 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-100"
           />
-          <button
+          <motion.button
             onClick={handleSend}
             disabled={!replyInput.trim()}
-            className="px-3 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-3 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
-          </button>
+          </motion.button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -375,26 +391,38 @@ function DeleteModal({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-      <div className="bg-card border border-border rounded-xl p-6 max-w-sm mx-4 shadow-xl">
-        <h3 className="text-lg font-semibold mb-2">Delete Message</h3>
-        <p className="text-muted text-sm mb-4">Are you sure you want to delete this message? This action cannot be undone.</p>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white border border-neutral-200 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
+      >
+        <h3 className="text-lg font-semibold mb-2 text-neutral-900">Delete Message</h3>
+        <p className="text-neutral-500 text-sm mb-4">Are you sure you want to delete this message? This action cannot be undone.</p>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-lg hover:bg-secondary transition-colors"
+            className="px-4 py-2 text-sm rounded-lg hover:bg-neutral-100 transition-colors text-neutral-700"
           >
             Cancel
           </button>
-          <button
+          <motion.button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-medium"
           >
             Delete
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -433,42 +461,54 @@ function CreateChannelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in">
-      <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
-        <h3 className="text-lg font-semibold mb-4">Create Channel</h3>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    >
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white border border-neutral-200 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl"
+      >
+        <h3 className="text-lg font-semibold mb-4 text-neutral-900">Create Channel</h3>
         <div className="mb-4">
-          <label className="block text-sm text-muted mb-1">Channel Name</label>
+          <label className="block text-sm text-neutral-500 mb-1">Channel Name</label>
           <div className="flex items-center gap-2">
-            <span className="text-muted">#</span>
+            <span className="text-neutral-400">#</span>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               placeholder="general"
-              className="flex-1 px-3 py-2 text-sm rounded-lg bg-secondary border border-border focus:border-accent focus:outline-none"
+              className="flex-1 px-3 py-2 text-sm rounded-lg bg-neutral-50 border border-neutral-200 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-100"
               autoFocus
             />
           </div>
-          {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
         </div>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg hover:bg-secondary transition-colors"
+            className="px-4 py-2 text-sm rounded-lg hover:bg-neutral-100 transition-colors text-neutral-700"
           >
             Cancel
           </button>
-          <button
+          <motion.button
             onClick={handleCreate}
             disabled={creating || !name.trim()}
-            className="px-4 py-2 text-sm rounded-lg bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 text-sm rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {creating ? "Creating..." : "Create"}
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -476,13 +516,13 @@ function CreateChannelModal({
 function MessageSkeleton() {
   return (
     <div className="flex gap-3 p-2 animate-pulse">
-      <div className="shrink-0 w-9 h-9 rounded-full bg-secondary" />
+      <div className="shrink-0 w-9 h-9 rounded-full bg-neutral-200" />
       <div className="flex-1 space-y-2">
         <div className="flex items-center gap-2">
-          <div className="h-4 w-20 bg-secondary rounded" />
-          <div className="h-3 w-12 bg-secondary rounded" />
+          <div className="h-4 w-20 bg-neutral-200 rounded" />
+          <div className="h-3 w-12 bg-neutral-200 rounded" />
         </div>
-        <div className="h-4 w-3/4 bg-secondary rounded" />
+        <div className="h-4 w-3/4 bg-neutral-200 rounded" />
       </div>
     </div>
   );
@@ -940,71 +980,81 @@ export default function ChatWindow({
   // Non-member view
   if (!loopDetails.is_member) {
     return (
-      <div className="flex flex-col h-full bg-secondary/20 items-center justify-center">
-        <div className="text-center p-8 max-w-md glass rounded-3xl">
-          <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-4xl mb-6 mx-auto">
+      <div className="flex flex-col h-full bg-neutral-50 items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center p-8 max-w-md bg-white rounded-2xl border border-neutral-200 shadow-xl"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center text-4xl mb-6 mx-auto">
             🔒
           </div>
-          <h2 className="text-2xl font-bold mb-3">Access Required</h2>
-          <p className="text-muted mb-6">
+          <h2 className="text-2xl font-bold mb-3 text-neutral-900">Access Required</h2>
+          <p className="text-neutral-500 mb-6">
             This loop requires verification of your GitHub contributions to join.
           </p>
 
           {!verification ? (
-            <button
+            <motion.button
               onClick={handleVerify}
               disabled={verifying}
-              className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors disabled:opacity-50"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
             >
               {verifying ? "Checking..." : "Check Eligibility"}
-            </button>
+            </motion.button>
           ) : verification.is_member ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-2 text-green-400 font-medium mb-2">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-2 text-emerald-600 font-medium mb-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Already a Member
                 </div>
-                <p className="text-sm text-muted">You have access to this loop.</p>
+                <p className="text-sm text-neutral-600">You have access to this loop.</p>
               </div>
-              <button
+              <motion.button
                 onClick={() => window.location.reload()}
-                className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium hover:bg-neutral-800"
               >
                 Open Chat
-              </button>
+              </motion.button>
             </div>
           ) : verification.can_join ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                <div className="flex items-center gap-2 text-green-400 font-medium mb-2">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-2 text-emerald-600 font-medium mb-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Eligible!
                 </div>
-                <p className="text-sm text-muted">{verification.message}</p>
+                <p className="text-sm text-neutral-600">{verification.message}</p>
               </div>
-              <button
+              <motion.button
                 onClick={handleJoin}
                 disabled={joining}
-                className="w-full py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium disabled:opacity-50"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 disabled:opacity-50"
               >
                 {joining ? "Joining..." : "Join Loop"}
-              </button>
+              </motion.button>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                <div className="flex items-center gap-2 text-red-400 font-medium mb-2">
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                <div className="flex items-center gap-2 text-red-600 font-medium mb-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Not Eligible
                 </div>
-                <p className="text-sm text-muted">{verification.message}</p>
+                <p className="text-sm text-neutral-600">{verification.message}</p>
               </div>
 
               {verification.results && verification.results.length > 0 && (
@@ -1012,15 +1062,15 @@ export default function ChatWindow({
                   {verification.results.map((result, i) => (
                     <div
                       key={i}
-                      className={`p-3 rounded-lg ${
-                        result.passed ? "bg-green-500/10" : "bg-secondary"
+                      className={`p-3 rounded-xl border ${
+                        result.passed ? "bg-emerald-50 border-emerald-200" : "bg-neutral-50 border-neutral-200"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span>{result.passed ? "✅" : "❌"}</span>
-                        <span className="text-sm">{result.criteria}</span>
+                        <span className="text-sm text-neutral-700">{result.criteria}</span>
                       </div>
-                      <p className="text-xs text-muted mt-1">
+                      <p className="text-xs text-neutral-500 mt-1">
                         {result.actual} / {result.required} required
                       </p>
                     </div>
@@ -1029,98 +1079,114 @@ export default function ChatWindow({
               )}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   // Member view - main chat
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden bg-neutral-50">
       {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <DeleteModal
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
+      <AnimatePresence>
+        {deleteTarget && (
+          <DeleteModal
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setDeleteTarget(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Channel creation modal */}
-      {showCreateChannel && (
-        <CreateChannelModal
-          projectId={loopDetails.id}
-          onClose={() => setShowCreateChannel(false)}
-          onCreated={handleChannelCreated}
-        />
-      )}
+      <AnimatePresence>
+        {showCreateChannel && (
+          <CreateChannelModal
+            projectId={loopDetails.id}
+            onClose={() => setShowCreateChannel(false)}
+            onCreated={handleChannelCreated}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Channels sidebar */}
-      {showChannelPanel && channelList.length > 0 && (
-        <div className="w-56 shrink-0 border-r border-border bg-card/30 flex flex-col h-full">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold text-sm">Channels</h3>
-            {isOwner && (
-              <button
-                onClick={() => setShowCreateChannel(true)}
-                className="p-1 rounded hover:bg-secondary transition-colors text-muted hover:text-foreground"
-                title="Create channel"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {channelList.map((channel) => (
-              <ChannelItem
-                key={channel.id}
-                channel={channel}
-                isActive={currentChannel?.id === channel.id}
-                onClick={() => handleChannelSelect(channel)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showChannelPanel && channelList.length > 0 && (
+          <motion.div 
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 224, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="shrink-0 border-r border-neutral-200 bg-white flex flex-col h-full overflow-hidden"
+          >
+            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-neutral-900">Channels</h3>
+              {isOwner && (
+                <motion.button
+                  onClick={() => setShowCreateChannel(true)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-1 rounded hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-900"
+                  title="Create channel"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </motion.button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {channelList.map((channel) => (
+                <ChannelItem
+                  key={channel.id}
+                  channel={channel}
+                  isActive={currentChannel?.id === channel.id}
+                  onClick={() => handleChannelSelect(channel)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col h-full min-w-0">
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-white">
         {/* Header */}
-        <div className="shrink-0 px-6 py-4 border-b border-border bg-card/50 flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {channelList.length > 0 && (
-              <button
+              <motion.button
                 onClick={() => setShowChannelPanel(!showChannelPanel)}
-                className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted hover:text-foreground"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-900"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                 </svg>
-              </button>
+              </motion.button>
             )}
             <div>
-              <h2 className="font-semibold text-foreground flex items-center gap-2">
+              <h2 className="font-semibold text-neutral-900 flex items-center gap-2">
                 {currentChannel ? (
                   <>
-                    <span className="text-muted">#</span>
+                    <span className="text-neutral-400">#</span>
                     {currentChannel.name}
                   </>
                 ) : (
                   loopDetails.name
                 )}
               </h2>
-              <p className="text-xs text-muted">{loopDetails.members?.length || 0} members</p>
+              <p className="text-xs text-neutral-500">{loopDetails.members?.length || 0} members</p>
             </div>
           </div>
-          <div className={`flex items-center gap-2 text-xs ${connected ? "text-green-400" : "text-amber-400"}`}>
-            <span className={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-amber-400 animate-pulse"}`} />
+          <div className={`flex items-center gap-2 text-xs font-medium ${connected ? "text-emerald-500" : "text-amber-500"}`}>
+            <span className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
             {connected ? "Live" : "Reconnecting..."}
           </div>
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1">
           {channelLoading && messages.length === 0 ? (
             // Show skeletons only if no cached messages
             <>
@@ -1129,15 +1195,19 @@ export default function ChatWindow({
               <MessageSkeleton />
             </>
           ) : messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-3xl mb-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="h-full flex flex-col items-center justify-center text-center py-12"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center text-3xl mb-4">
                 💬
               </div>
-              <h3 className="font-medium text-foreground mb-1">
+              <h3 className="font-medium text-neutral-900 mb-1">
                 {currentChannel ? `Welcome to #${currentChannel.name}` : "Start the conversation"}
               </h3>
-              <p className="text-sm text-muted">Be the first to send a message!</p>
-            </div>
+              <p className="text-sm text-neutral-500">Be the first to send a message!</p>
+            </motion.div>
           ) : (
             messages.map((msg) => (
               <MessageItem
@@ -1154,7 +1224,7 @@ export default function ChatWindow({
         </div>
 
         {/* Input area */}
-        <div className="shrink-0 px-4 py-4 border-t border-border bg-card/30">
+        <div className="shrink-0 px-4 py-4 border-t border-neutral-200 bg-neutral-50">
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
@@ -1162,39 +1232,43 @@ export default function ChatWindow({
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={currentChannel ? `Message #${currentChannel.name}` : "Type a message..."}
-                className="w-full px-4 py-3 rounded-xl bg-secondary border border-border focus:border-accent focus:outline-none resize-none text-sm min-h-[48px] max-h-32"
+                className="w-full px-4 py-3 rounded-xl bg-white border border-neutral-200 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-100 resize-none text-sm min-h-[48px] max-h-32"
                 rows={1}
               />
             </div>
-            <button
+            <motion.button
               onClick={handleSend}
               disabled={!message.trim() || !connected}
-              className="shrink-0 w-12 h-12 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="shrink-0 w-12 h-12 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Thread panel */}
-      {threadParent && (
-        <ThreadPanel
-          parentMessage={threadParent}
-          replies={threadReplies}
-          loading={threadLoading}
-          currentUserId={currentUserId}
-          isOwner={isOwner}
-          onClose={() => {
-            setThreadParent(null);
-            setThreadReplies([]);
-          }}
-          onSendReply={handleSendThreadReply}
-          onDeleteReply={handleDeleteClick}
-        />
-      )}
+      <AnimatePresence>
+        {threadParent && (
+          <ThreadPanel
+            parentMessage={threadParent}
+            replies={threadReplies}
+            loading={threadLoading}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            onClose={() => {
+              setThreadParent(null);
+              setThreadReplies([]);
+            }}
+            onSendReply={handleSendThreadReply}
+            onDeleteReply={handleDeleteClick}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { motion } from "framer-motion";
 
 interface SidebarProject {
   id: string;
@@ -15,7 +16,7 @@ interface LoopsListProps {
   selectedLoopName?: string;
 }
 
-// Memoized individual loop item
+// Memoized individual loop item with cleaner design
 const LoopItem = memo(function LoopItem({
   project,
   isSelected,
@@ -33,48 +34,56 @@ const LoopItem = memo(function LoopItem({
 }) {
   const colorClasses = {
     accent: {
-      selected: "bg-accent/10 border-accent/20",
-      icon: "bg-accent/20 text-accent-foreground",
-      dot: "bg-accent",
-      badge: "bg-accent/10 text-accent",
+      selected: "bg-neutral-900 text-white",
+      badge: "bg-white/20 text-white",
     },
     emerald: {
-      selected: "bg-emerald-500/10 border-emerald-500/20",
-      icon: "bg-emerald-500/20 text-emerald-600",
-      dot: "bg-emerald-500",
-      badge: "bg-emerald-500/10 text-emerald-500",
+      selected: "bg-emerald-500 text-white",
+      badge: "bg-white/20 text-white",
     },
   };
 
   const colors = colorClasses[badgeColor];
 
   return (
-    <button
+    <motion.button
       onClick={() => onSelect(project)}
       onMouseEnter={() => onHover?.(project)}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left group ${isSelected
-          ? `${colors.selected} border`
-          : "hover:bg-secondary border border-transparent"
-        }`}
+      whileHover={{ x: 2 }}
+      whileTap={{ scale: 0.98 }}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left group ${
+        isSelected
+          ? colors.selected
+          : "hover:bg-neutral-100 text-neutral-700"
+      }`}
     >
       <div
-        className={`w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0 transition-colors ${isSelected ? colors.icon : "bg-secondary text-muted group-hover:bg-background"
-          }`}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
+          isSelected 
+            ? "bg-white/20" 
+            : "bg-neutral-200/60 group-hover:bg-neutral-200"
+        }`}
       >
         💬
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`font-medium truncate text-sm ${isSelected ? "text-foreground" : "text-muted group-hover:text-foreground"}`}>
+        <div className={`font-medium truncate text-sm ${isSelected ? "text-white" : "text-neutral-800"}`}>
           {project.name}
         </div>
-        <div className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded-full inline-block ${colors.badge}`}>
+        <div className={`text-[10px] mt-0.5 px-1.5 py-0.5 rounded-full inline-block font-medium ${
+          isSelected 
+            ? colors.badge 
+            : badgeColor === "accent" 
+              ? "bg-neutral-200 text-neutral-600" 
+              : "bg-emerald-100 text-emerald-600"
+        }`}>
           {badge}
         </div>
       </div>
       {isSelected && (
-        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
+        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-white" />
       )}
-    </button>
+    </motion.button>
   );
 });
 
@@ -87,9 +96,9 @@ const LoopsList = memo(function LoopsList({
 }: LoopsListProps) {
   if (projects.length === 0) {
     return (
-      <div className="text-center py-8 text-muted text-sm">
-        <p>No loops yet</p>
-        <p className="text-xs mt-1">Create or join a loop to get started</p>
+      <div className="text-center py-8 text-neutral-500 text-sm">
+        <p className="font-medium">No loops yet</p>
+        <p className="text-xs mt-1 text-neutral-400">Create or join a loop to get started</p>
       </div>
     );
   }
@@ -99,11 +108,11 @@ const LoopsList = memo(function LoopsList({
   const joinedLoops = projects.filter(p => p.role !== "owner");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Owned Loops */}
       {ownedLoops.length > 0 && (
         <div>
-          <h3 className="text-xs font-medium text-muted uppercase tracking-wider px-2 mb-2">
+          <h3 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider px-2 mb-2">
             Your Loops
           </h3>
           <div className="space-y-1">
@@ -125,7 +134,7 @@ const LoopsList = memo(function LoopsList({
       {/* Joined Loops */}
       {joinedLoops.length > 0 && (
         <div>
-          <h3 className="text-xs font-medium text-muted uppercase tracking-wider px-2 mb-2">
+          <h3 className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider px-2 mb-2">
             Joined
           </h3>
           <div className="space-y-1">
