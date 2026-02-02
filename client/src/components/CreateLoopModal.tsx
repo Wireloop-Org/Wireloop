@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import { api, GitHubRepo, Rule } from "@/lib/api";
 
 interface CreateLoopModalProps {
@@ -130,90 +131,108 @@ export default function CreateLoopModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={handleClose}
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={handleClose}
+        />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl max-h-[85vh] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            {step === "set-rules" && (
-              <button
-                onClick={handleBack}
-                className="p-1 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <svg
-                  className="w-5 h-5 text-muted"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+        {/* Modal */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ duration: 0.2 }}
+          className="relative w-full max-w-2xl max-h-[85vh] bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50">
+            <div className="flex items-center gap-3">
+              {step === "set-rules" && (
+                <motion.button
+                  onClick={handleBack}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-            )}
-            <h2 className="text-xl font-semibold text-foreground">
-              {step === "select-repo" ? "Select Repository" : "Configure Loop"}
-            </h2>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
-          >
-            <svg
-              className="w-5 h-5 text-muted hover:text-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+                  <svg
+                    className="w-5 h-5 text-neutral-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </motion.button>
+              )}
+              <h2 className="text-xl font-semibold text-neutral-900">
+                {step === "select-repo" ? "Select Repository" : "Configure Loop"}
+              </h2>
+            </div>
+            <motion.button
+              onClick={handleClose}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {error && (
-          <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
-            {error}
+              <svg
+                className="w-5 h-5 text-neutral-500 hover:text-neutral-900"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </motion.button>
           </div>
-        )}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
-          {step === "select-repo" ? (
-            <>
-              {/* Search */}
-              <div className="mb-4">
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+            {step === "select-repo" ? (
+              <>
+                {/* Search */}
+                <div className="mb-4">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search repositories..."
-                  className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 transition-colors"
                 />
               </div>
 
               {/* Repos list */}
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-neutral-900 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredRepos.length === 0 ? (
-                <div className="text-center py-12 text-muted">
+                <div className="text-center py-12 text-neutral-500">
                   {searchQuery
                     ? "No repositories found"
                     : "No repositories available"}
@@ -221,12 +240,14 @@ export default function CreateLoopModal({
               ) : (
                 <div className="space-y-2">
                   {filteredRepos.map((repo) => (
-                    <button
+                    <motion.button
                       key={repo.id}
                       onClick={() => handleSelectRepo(repo)}
-                      className="w-full flex items-center gap-4 p-4 bg-card hover:bg-secondary/40 border border-border hover:border-border/80 rounded-xl transition-all text-left group hover-lift"
+                      whileHover={{ scale: 1.01, y: -2 }}
+                      whileTap={{ scale: 0.99 }}
+                      className="w-full flex items-center gap-4 p-4 bg-white hover:bg-neutral-50 border border-neutral-200 hover:border-neutral-300 rounded-xl transition-all text-left group shadow-sm hover:shadow-md"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-secondary overflow-hidden relative flex-shrink-0 border border-border">
+                      <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden relative flex-shrink-0 border border-neutral-200">
                         <Image
                           src={repo.owner.avatar_url}
                           alt={repo.owner.login}
@@ -237,24 +258,24 @@ export default function CreateLoopModal({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate text-foreground">
+                          <span className="font-medium truncate text-neutral-900">
                             {repo.full_name}
                           </span>
                           {repo.private && (
-                            <span className="px-2 py-0.5 text-xs bg-secondary text-muted rounded-full">
+                            <span className="px-2 py-0.5 text-xs bg-neutral-100 text-neutral-500 rounded-full">
                               Private
                             </span>
                           )}
                         </div>
                         {repo.description && (
-                          <p className="text-sm text-muted truncate mt-1">
+                          <p className="text-sm text-neutral-500 truncate mt-1">
                             {repo.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted">
+                        <div className="flex items-center gap-4 mt-2 text-xs text-neutral-500">
                           {repo.language && (
                             <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-accent" />
+                              <span className="w-2 h-2 rounded-full bg-neutral-900" />
                               {repo.language}
                             </span>
                           )}
@@ -267,7 +288,7 @@ export default function CreateLoopModal({
                         </div>
                       </div>
                       <svg
-                        className="w-5 h-5 text-muted group-hover:text-foreground transition-colors"
+                        className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900 transition-colors"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -279,7 +300,7 @@ export default function CreateLoopModal({
                           d="M9 5l7 7-7 7"
                         />
                       </svg>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               )}
@@ -288,8 +309,12 @@ export default function CreateLoopModal({
             <>
               {/* Selected Repo */}
               {selectedRepo && (
-                <div className="flex items-center gap-4 p-4 bg-secondary/20 border border-border rounded-xl mb-6">
-                  <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden relative flex-shrink-0 border border-border">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-4 p-4 bg-neutral-50 border border-neutral-200 rounded-xl mb-6"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-neutral-100 overflow-hidden relative flex-shrink-0 border border-neutral-200">
                     <Image
                       src={selectedRepo.owner.avatar_url}
                       alt={selectedRepo.owner.login}
@@ -299,17 +324,17 @@ export default function CreateLoopModal({
                     />
                   </div>
                   <div>
-                    <div className="font-medium text-foreground">{selectedRepo.full_name}</div>
-                    <div className="text-sm text-muted">
+                    <div className="font-medium text-neutral-900">{selectedRepo.full_name}</div>
+                    <div className="text-sm text-neutral-500">
                       {selectedRepo.description || "No description"}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Loop Name */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-muted mb-2">
+                <label className="block text-sm font-medium text-neutral-600 mb-2">
                   Loop Name
                 </label>
                 <input
@@ -317,42 +342,46 @@ export default function CreateLoopModal({
                   value={loopName}
                   onChange={(e) => setLoopName(e.target.value)}
                   placeholder="Enter loop name"
-                  className="w-full px-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent transition-colors"
+                  className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 transition-colors"
                 />
               </div>
 
               {/* Rules */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-muted">
+                  <label className="block text-sm font-medium text-neutral-600">
                     Access Rules
                   </label>
-                  <button
+                  <motion.button
                     onClick={handleAddRule}
-                    className="text-sm text-accent hover:text-accent-hover transition-colors font-medium"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="text-sm text-neutral-900 hover:text-neutral-700 transition-colors font-medium"
                   >
                     + Add Rule
-                  </button>
+                  </motion.button>
                 </div>
 
                 <div className="space-y-3">
                   {rules.map((rule, index) => (
-                    <div
+                    <motion.div
                       key={index}
-                      className="flex items-center gap-3 p-4 bg-secondary/20 border border-border rounded-xl"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl"
                     >
                       <select
                         value={rule.criteria_type}
                         onChange={(e) =>
                           handleRuleChange(index, "criteria_type", e.target.value)
                         }
-                        className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-foreground focus:outline-none focus:border-accent transition-colors"
+                        className="flex-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-neutral-900 focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 transition-colors"
                       >
                         <option value="PR_COUNT">Merged PRs</option>
                         <option value="COMMIT_COUNT">Commits</option>
                         <option value="ISSUE_COUNT">Issues Created</option>
                       </select>
-                      <span className="text-muted">≥</span>
+                      <span className="text-neutral-500">≥</span>
                       <input
                         type="number"
                         min="1"
@@ -360,12 +389,14 @@ export default function CreateLoopModal({
                         onChange={(e) =>
                           handleRuleChange(index, "threshold", e.target.value)
                         }
-                        className="w-20 px-3 py-2 bg-card border border-border rounded-lg text-foreground text-center focus:outline-none focus:border-accent transition-colors"
+                        className="w-20 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-neutral-900 text-center focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 transition-colors"
                       />
                       {rules.length > 1 && (
-                        <button
+                        <motion.button
                           onClick={() => handleRemoveRule(index)}
-                          className="p-2 text-muted hover:text-red-400 transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
                         >
                           <svg
                             className="w-4 h-4"
@@ -380,13 +411,13 @@ export default function CreateLoopModal({
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                             />
                           </svg>
-                        </button>
+                        </motion.button>
                       )}
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
 
-                <p className="text-xs text-muted mt-3">
+                <p className="text-xs text-neutral-500 mt-3">
                   Users must meet ALL rules to join this loop
                 </p>
               </div>
@@ -396,17 +427,21 @@ export default function CreateLoopModal({
 
         {/* Footer */}
         {step === "set-rules" && (
-          <div className="px-6 py-4 border-t border-border bg-card/50 flex justify-end gap-3">
-            <button
+          <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3">
+            <motion.button
               onClick={handleClose}
-              className="px-6 py-2.5 rounded-xl border border-border text-muted hover:text-foreground hover:bg-secondary transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 py-2.5 rounded-xl border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               onClick={handleCreate}
               disabled={creating || !loopName}
-              className="px-6 py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover-lift"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {creating ? (
                 <>
@@ -416,11 +451,12 @@ export default function CreateLoopModal({
               ) : (
                 "Create Loop"
               )}
-            </button>
+            </motion.button>
           </div>
         )}
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }
 

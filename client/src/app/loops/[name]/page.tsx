@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   getToken,
@@ -165,11 +166,15 @@ export default function LoopPage() {
   // Loading state - only show full-screen loader on first load with no data
   if (loading && !loopData) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-muted">Loading loop...</span>
-        </div>
+      <div className="h-screen flex items-center justify-center bg-neutral-50">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-3"
+        >
+          <div className="w-10 h-10 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+          <span className="text-sm text-neutral-500">Loading loop...</span>
+        </motion.div>
       </div>
     );
   }
@@ -177,24 +182,30 @@ export default function LoopPage() {
   // Error state - only show if we have an explicit error AND no cached data
   if (error && !loopData) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-4xl mx-auto mb-6">
+      <div className="h-screen flex items-center justify-center bg-neutral-50">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md"
+        >
+          <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center text-4xl mx-auto mb-6">
             {error === "Loop not found" ? "🔍" : "⚠️"}
           </div>
-          <h2 className="text-2xl font-bold mb-3 text-foreground">{error}</h2>
-          <p className="text-muted mb-6">
+          <h2 className="text-2xl font-bold mb-3 text-neutral-900">{error}</h2>
+          <p className="text-neutral-500 mb-6">
             {error === "Loop not found"
               ? "The loop you are looking for does not exist."
               : "Please try again or go back to dashboard."}
           </p>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => router.push("/")}
-            className="px-6 py-3 rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover font-medium transition-colors"
+            className="px-6 py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800"
           >
             Go to Dashboard
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     );
   }
@@ -205,35 +216,37 @@ export default function LoopPage() {
   const avatarUrl = profile?.avatar_url;
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden">
+    <div className="h-screen bg-neutral-50 flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 border-r border-border bg-card/50 flex flex-col h-full z-20">
+      <aside className="w-72 border-r border-neutral-200 bg-white flex flex-col h-full z-20">
         {/* Logo */}
-        <div className="shrink-0 p-4 border-b border-border">
-          <button
+        <div className="shrink-0 p-4 border-b border-neutral-200">
+          <motion.button
             onClick={() => router.push("/")}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            whileHover={{ opacity: 0.8 }}
+            className="flex items-center gap-3"
           >
-            <div className="w-9 h-9 rounded-lg bg-linear-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
+            <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center shadow-lg">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <span className="font-semibold text-lg text-foreground tracking-tight">Wireloop</span>
-          </button>
+            <span className="font-semibold text-lg text-neutral-900 tracking-tight">Wireloop</span>
+          </motion.button>
         </div>
 
         {/* Back to Dashboard */}
-        <div className="shrink-0 p-4 border-b border-border">
-          <button
+        <div className="shrink-0 p-3 border-b border-neutral-200">
+          <motion.button
             onClick={() => router.push("/")}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            whileHover={{ x: -2 }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Dashboard
-          </button>
+          </motion.button>
         </div>
 
         {/* Loops List */}
@@ -247,40 +260,41 @@ export default function LoopPage() {
         </div>
 
         {/* User */}
-        <div className="shrink-0 p-4 border-t border-border bg-card">
+        <div className="shrink-0 p-4 border-t border-neutral-200 bg-neutral-50/50">
           {profile ? (
             <>
-              <button
+              <motion.button
                 onClick={() => router.push("/profile")}
-                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary transition-colors group"
+                whileHover={{ backgroundColor: "rgb(245 245 245)" }}
+                className="w-full flex items-center gap-3 p-2 rounded-xl transition-colors group"
               >
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-secondary relative border border-border group-hover:border-accent/50 transition-colors">
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-200 relative ring-2 ring-neutral-100 group-hover:ring-neutral-200 transition-all">
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+                    <div className="w-full h-full flex items-center justify-center text-sm text-neutral-500">
                       {displayName[0]?.toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">{displayName}</div>
-                  <div className="text-xs text-muted truncate">@{profile.username}</div>
+                  <div className="text-sm font-medium text-neutral-900 truncate">{displayName}</div>
+                  <div className="text-xs text-neutral-500 truncate">@{profile.username}</div>
                 </div>
-              </button>
+              </motion.button>
               <button
                 onClick={handleLogout}
-                className="w-full mt-2 px-4 py-2 text-sm text-muted hover:text-foreground hover:bg-secondary rounded-lg transition-colors font-medium"
+                className="w-full mt-2 px-4 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors font-medium"
               >
                 Sign out
               </button>
             </>
           ) : (
             <div className="flex items-center gap-3 p-2 animate-pulse">
-              <div className="w-9 h-9 rounded-full bg-secondary" />
+              <div className="w-9 h-9 rounded-full bg-neutral-200" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-24 bg-secondary rounded" />
-                <div className="h-3 w-16 bg-secondary rounded" />
+                <div className="h-4 w-24 bg-neutral-200 rounded" />
+                <div className="h-3 w-16 bg-neutral-200 rounded" />
               </div>
             </div>
           )}
@@ -289,27 +303,37 @@ export default function LoopPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        {loopData ? (
-          <ChatWindow
-            loopDetails={{
-              id: loopData.id,
-              name: loopData.name,
-              owner_id: loopData.owner_id,
-              created_at: loopData.created_at,
-              is_member: loopData.is_member,
-              members: loopData.members,
-            }}
-            initialMessages={loopData.messages || []}
-            channels={loopData.channels || []}
-            activeChannel={loopData.active_channel}
-            onMembershipChanged={loadData}
-            currentUserId={initData?.profile?.id}
-          />
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {loopData ? (
+            <motion.div
+              key={loopData.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex flex-col h-full"
+            >
+              <ChatWindow
+                loopDetails={{
+                  id: loopData.id,
+                  name: loopData.name,
+                  owner_id: loopData.owner_id,
+                  created_at: loopData.created_at,
+                  is_member: loopData.is_member,
+                  members: loopData.members,
+                }}
+                initialMessages={loopData.messages || []}
+                channels={loopData.channels || []}
+                activeChannel={loopData.active_channel}
+                onMembershipChanged={loadData}
+                currentUserId={initData?.profile?.id}
+              />
+            </motion.div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Members Panel (collapsible) */}
         {loopData && loopData.members.length > 0 && (
@@ -326,43 +350,61 @@ function MembersPanel({ members }: { members: LoopFullData["members"] }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border-t border-border bg-card/80 backdrop-blur-md">
-      <button
+    <div className="border-t border-neutral-200 bg-white">
+      <motion.button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-6 py-3 flex items-center justify-between text-sm hover:bg-secondary/50 transition-colors"
+        whileHover={{ backgroundColor: "rgb(250 250 250)" }}
+        className="w-full px-6 py-3 flex items-center justify-between text-sm transition-colors"
       >
-        <span className="text-muted font-medium">
+        <span className="text-neutral-500 font-medium">
           {members.length} Member{members.length !== 1 ? "s" : ""}
         </span>
-        <svg
-          className={`w-4 h-4 text-muted transition-transform ${expanded ? "rotate-180" : ""}`}
+        <motion.svg
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="w-4 h-4 text-neutral-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </svg>
-      </button>
+        </motion.svg>
+      </motion.button>
 
-      {expanded && (
-        <div className="px-6 pb-4 flex flex-wrap gap-3 animate-fade-in-up">
-          {members.map((member) => (
-            <div key={member.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
-              <div className="w-6 h-6 rounded-full overflow-hidden bg-background relative border border-border/50">
-                {member.avatar_url ? (
-                  <Image src={member.avatar_url} alt={member.username} fill className="object-cover" unoptimized />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-muted">
-                    {member.username[0]?.toUpperCase()}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 pb-4 flex flex-wrap gap-2">
+              {members.map((member) => (
+                <motion.div 
+                  key={member.id} 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 border border-neutral-200"
+                >
+                  <div className="w-5 h-5 rounded-full overflow-hidden bg-neutral-200 relative">
+                    {member.avatar_url ? (
+                      <Image src={member.avatar_url} alt={member.username} fill className="object-cover" unoptimized />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500">
+                        {member.username[0]?.toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <span className="text-sm text-foreground">{member.display_name || member.username}</span>
-              {member.role === "owner" && <span className="text-xs text-amber-500" title="Owner">👑</span>}
+                  <span className="text-sm text-neutral-700">{member.display_name || member.username}</span>
+                  {member.role === "owner" && <span className="text-xs" title="Owner">👑</span>}
+                </motion.div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
