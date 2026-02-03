@@ -160,24 +160,12 @@ export default function BrowseLoopsPage() {
               onClick={() => router.push("/")}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center shadow-lg">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
+              <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full" />
               </div>
-              <span className="font-semibold text-neutral-900 tracking-tight">Wireloop</span>
+              <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
             </motion.button>
 
             <nav className="flex items-center gap-1">
@@ -279,8 +267,10 @@ export default function BrowseLoopsPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-center py-20 rounded-2xl border-2 border-dashed border-neutral-300 bg-white"
               >
-                <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center text-3xl mx-auto mb-4">
-                  🔍
+                <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
                 <h3 className="text-lg font-medium mb-2 text-neutral-900">No loops found</h3>
                 <p className="text-neutral-500">
@@ -309,12 +299,14 @@ export default function BrowseLoopsPage() {
                       }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                         selectedLoop?.id === loop.id 
                           ? "bg-white/10" 
                           : "bg-gradient-to-br from-neutral-100 to-neutral-50 border border-neutral-200"
                       }`}>
-                        💬
+                        <svg className={`w-6 h-6 ${selectedLoop?.id === loop.id ? "text-white" : "text-neutral-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-semibold truncate ${selectedLoop?.id === loop.id ? "text-white" : "text-neutral-900"}`}>
