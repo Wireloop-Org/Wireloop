@@ -14,9 +14,11 @@ import (
 	"wireloop/internal/middleware"
 
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
@@ -44,7 +46,8 @@ func main() {
 		log.Fatalf("Unable to parse database URL: %v\n", err)
 	}
 
-	maxConns := 10 // Default value
+	// SOTA connection pool settings for performance
+	maxConns := 25 // Increased default for better concurrency
 	if maxConnsStr := os.Getenv("MAX_DB_CONN"); maxConnsStr != "" {
 		if parsedMaxConns, err := strconv.Atoi(maxConnsStr); err == nil {
 			maxConns = parsedMaxConns
@@ -53,6 +56,10 @@ func main() {
 		}
 	}
 	config.MaxConns = int32(maxConns)
+	config.MinConns = int32(maxConns / 4)       // Keep warm connections
+	config.MaxConnLifetime = 30 * time.Minute   // Refresh connections periodically
+	config.MaxConnIdleTime = 5 * time.Minute    // Close idle connections
+	config.HealthCheckPeriod = 30 * time.Second // Check connection health
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
@@ -71,7 +78,33 @@ func main() {
 		DBPool:  pool,
 	}
 
+	// Initialize Redis for pub/sub (horizontal scaling)
+	var rdb *redis.Client
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL != "" {
+		opt, err := redis.ParseURL(redisURL)
+		if err != nil {
+			log.Printf("Warning: Invalid REDIS_URL, running without Redis: %v", err)
+		} else {
+			rdb = redis.NewClient(opt)
+			if err := rdb.Ping(ctx).Err(); err != nil {
+				log.Printf("Warning: Redis connection failed, running without Redis: %v", err)
+				rdb = nil
+			} else {
+				log.Println("Connected to Redis for pub/sub scaling")
+			}
+		}
+	} else {
+		log.Println("REDIS_URL not set, running in single-server mode (no horizontal scaling)")
+	}
+
 	r := gin.Default()
+
+	// GZIP compression - ~70% bandwidth savings on JSON responses
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	// Global rate limiting - 100 req/min per IP (prevents abuse)
+	r.Use(middleware.RateLimitMiddleware())
 
 	// CORS configuration
 	frontendURL := os.Getenv("FRONTEND_URL")
@@ -98,11 +131,13 @@ func main() {
 	})
 
 	r.GET("/api/test-db", app.testDBHandler)
-	hub := chat.NewHub()
+	hub := chat.NewHub(rdb)
 	Handler := &api.Handler{Queries: queries, Pool: pool, Hub: hub}
-	// Auth routes (public)
-	r.GET("/api/auth/callback", Handler.HandleGitHubCallback)
-	r.GET("/api/auth/github", func(c *gin.Context) {
+
+	// Auth routes (public) - strict rate limiting to prevent brute force
+	authRateLimit := middleware.StrictRateLimitMiddleware()
+	r.GET("/api/auth/callback", authRateLimit, Handler.HandleGitHubCallback)
+	r.GET("/api/auth/github", authRateLimit, func(c *gin.Context) {
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		if clientID == "" {
 			log.Println("WARNING: GITHUB_CLIENT_ID is empty!")
@@ -165,8 +200,8 @@ func main() {
 		protected.GET("/messages/:message_id/replies", Handler.HandleGetThreadReplies)
 		protected.DELETE("/messages/:message_id", Handler.HandleDeleteMessage)
 
-		// WebSocket
-		protected.GET("/ws", Handler.HandleWS)
+		// WebSocket - rate limited to prevent connection spam
+		protected.GET("/ws", middleware.WebSocketRateLimitMiddleware(), Handler.HandleWS)
 	}
 
 	port := os.Getenv("PORT")

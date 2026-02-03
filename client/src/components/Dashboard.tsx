@@ -28,17 +28,45 @@ const cardHover = {
   transition: { duration: 0.2, ease: "easeOut" as const }
 };
 
+// Icon component for StatCard
+const StatIcon = ({ type, className }: { type: string; className?: string }) => {
+    switch (type) {
+        case "owned":
+            return (
+                <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            );
+        case "joined":
+            return (
+                <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+            );
+        case "total":
+            return (
+                <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            );
+        default:
+            return (
+                <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+            );
+    }
+};
+
 // Memoized loop card component with framer-motion
 const LoopCard = memo(function LoopCard({
     name,
     subtitle,
-    icon,
     date,
     onClick,
 }: {
     name: string;
     subtitle: string;
-    icon: string;
     date?: string;
     onClick: () => void;
 }) {
@@ -50,8 +78,10 @@ const LoopCard = memo(function LoopCard({
             className="p-5 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-shadow text-left group w-full"
         >
             <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-50 border border-neutral-200 flex items-center justify-center text-lg">
-                    {icon}
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-50 border border-neutral-200 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
                 </div>
                 <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-neutral-900 truncate">{name}</h3>
@@ -92,7 +122,9 @@ const StatCard = memo(function StatCard({
                 <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
             )}
             <div className="relative z-10">
-                <div className="text-2xl mb-3">{icon}</div>
+                <div className={`mb-3 ${gradient ? 'text-white' : 'text-neutral-600'}`}>
+                    <StatIcon type={icon} />
+                </div>
                 <div className={`text-4xl font-bold mb-1 tracking-tight ${gradient ? 'text-white' : 'text-neutral-900'}`}>
                     {value}
                 </div>
@@ -157,24 +189,12 @@ export default function Dashboard() {
                     <motion.div 
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center gap-3"
+                        className="flex items-center gap-2"
                     >
-                        <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center shadow-lg">
-                            <svg
-                                className="w-5 h-5 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                                />
-                            </svg>
+                        <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+                            <div className="w-3 h-3 bg-white rounded-full" />
                         </div>
-                        <span className="font-semibold text-lg text-neutral-900 tracking-tight">Wireloop</span>
+                        <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
                     </motion.div>
 
                     {/* User Menu */}
@@ -234,18 +254,18 @@ export default function Dashboard() {
                     {/* Stats cards */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
                         <StatCard
-                            icon="💬"
+                            icon="owned"
                             value={isLoading ? "–" : ownedLoops.length}
                             label="Owned Loops"
                             gradient="bg-gradient-to-br from-neutral-900 to-neutral-700"
                         />
                         <StatCard
-                            icon="🔗"
+                            icon="joined"
                             value={isLoading ? "–" : filteredJoinedLoops.length}
                             label="Joined Loops"
                         />
                         <StatCard
-                            icon="⚡"
+                            icon="total"
                             value={isLoading ? "–" : ownedLoops.length + filteredJoinedLoops.length}
                             label="Total Loops"
                         />
@@ -258,8 +278,10 @@ export default function Dashboard() {
                             className="p-6 rounded-2xl bg-white border border-neutral-200"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 border border-emerald-200 flex items-center justify-center text-xl">
-                                    ✨
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 border border-emerald-200 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg text-neutral-900 mb-1">Create a Loop</h3>
@@ -280,8 +302,10 @@ export default function Dashboard() {
                             className="p-6 rounded-2xl bg-white border border-neutral-200"
                         >
                             <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center text-xl">
-                                    🔍
+                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg text-neutral-900 mb-1">Browse Loops</h3>
@@ -303,7 +327,10 @@ export default function Dashboard() {
                     {(isLoading || filteredJoinedLoops.length > 0) && (
                         <motion.div variants={itemVariants} className="mb-10">
                             <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                                <span className="text-lg">🔗</span> Joined Loops
+                                <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Joined Loops
                             </h2>
                             {isLoading ? (
                                 <div className="flex justify-center py-12">
@@ -316,7 +343,6 @@ export default function Dashboard() {
                                             key={membership.loop_id}
                                             name={membership.loop_name}
                                             subtitle={membership.role}
-                                            icon="🔗"
                                             date={`Joined ${new Date(membership.joined_at).toLocaleDateString()}`}
                                             onClick={() => handleLoopClick(membership.loop_name)}
                                         />
@@ -329,7 +355,10 @@ export default function Dashboard() {
                     {/* Your Loops */}
                     <motion.div variants={itemVariants} className="mb-10">
                         <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                            <span className="text-lg">💬</span> Your Loops
+                            <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            Your Loops
                         </h2>
                         {isLoading ? (
                             <div className="flex justify-center py-12">
@@ -345,7 +374,6 @@ export default function Dashboard() {
                                         <LoopCard
                                             name={project.name}
                                             subtitle="Created by you"
-                                            icon="💬"
                                             onClick={() => handleLoopClick(project.name)}
                                         />
                                     </div>
@@ -356,8 +384,10 @@ export default function Dashboard() {
                                 whileHover={cardHover}
                                 className="text-center py-16 rounded-2xl border-2 border-dashed border-neutral-300 bg-white"
                             >
-                                <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center text-3xl mx-auto mb-4">
-                                    🚀
+                                <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
                                 </div>
                                 <h3 className="text-xl font-semibold text-neutral-900 mb-2">No loops yet</h3>
                                 <p className="text-neutral-500 mb-6">

@@ -163,18 +163,69 @@ export default function LoopPage() {
     router.push("/");
   };
 
-  // Loading state - only show full-screen loader on first load with no data
+  // Loading state - show skeleton UI instead of full-screen spinner for faster perceived load
   if (loading && !loopData) {
     return (
-      <div className="h-screen flex items-center justify-center bg-neutral-50">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-3"
-        >
-          <div className="w-10 h-10 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
-          <span className="text-sm text-neutral-500">Loading loop...</span>
-        </motion.div>
+      <div className="h-screen bg-neutral-50 flex overflow-hidden">
+        {/* Skeleton Sidebar */}
+        <aside className="w-72 border-r border-neutral-200 bg-white flex flex-col h-full">
+          <div className="p-4 border-b border-neutral-200">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded bg-neutral-200 animate-pulse" />
+              <div className="w-24 h-5 rounded bg-neutral-200 animate-pulse" />
+            </div>
+          </div>
+          <div className="p-3 border-b border-neutral-200">
+            <div className="w-full h-9 rounded-lg bg-neutral-100 animate-pulse" />
+          </div>
+          <div className="flex-1 p-3 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-full h-12 rounded-xl bg-neutral-100 animate-pulse" />
+            ))}
+          </div>
+        </aside>
+        
+        {/* Skeleton Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header skeleton */}
+          <div className="p-4 border-b border-neutral-200 bg-white flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-neutral-200 animate-pulse" />
+              <div>
+                <div className="w-32 h-5 rounded bg-neutral-200 animate-pulse mb-1" />
+                <div className="w-20 h-3 rounded bg-neutral-100 animate-pulse" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Chat area skeleton */}
+          <div className="flex-1 flex">
+            <div className="flex-1 p-6 space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-neutral-200 animate-pulse shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="w-24 h-4 rounded bg-neutral-200 animate-pulse" />
+                    <div className={`h-4 rounded bg-neutral-100 animate-pulse ${i % 2 === 0 ? 'w-3/4' : 'w-1/2'}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Members panel skeleton */}
+            <div className="w-64 border-l border-neutral-200 bg-white p-4">
+              <div className="w-20 h-4 rounded bg-neutral-200 animate-pulse mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-neutral-200 animate-pulse" />
+                    <div className="w-20 h-3 rounded bg-neutral-100 animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -188,8 +239,16 @@ export default function LoopPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center max-w-md"
         >
-          <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center text-4xl mx-auto mb-6">
-            {error === "Loop not found" ? "🔍" : "⚠️"}
+          <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-6">
+            {error === "Loop not found" ? (
+              <svg className="w-10 h-10 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            ) : (
+              <svg className="w-10 h-10 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
           </div>
           <h2 className="text-2xl font-bold mb-3 text-neutral-900">{error}</h2>
           <p className="text-neutral-500 mb-6">
@@ -224,14 +283,12 @@ export default function LoopPage() {
           <motion.button
             onClick={() => router.push("/")}
             whileHover={{ opacity: 0.8 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2"
           >
-            <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center shadow-lg">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full" />
             </div>
-            <span className="font-semibold text-lg text-neutral-900 tracking-tight">Wireloop</span>
+            <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
           </motion.button>
         </div>
 

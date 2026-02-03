@@ -2,12 +2,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const WS_URL = API_URL.replace(/^http/, "ws");
 
 // ============================================================================
-// PERFORMANCE: In-memory cache with smart invalidation
+// PERFORMANCE: In-memory cache with stale-while-revalidate pattern
 // ============================================================================
 const cache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 60 * 1000; // 60 seconds - longer TTL for faster perceived performance
+const CACHE_TTL = 30 * 1000; // 30 seconds - fresh data window
+const STALE_TTL = 5 * 60 * 1000; // 5 minutes - serve stale while revalidating
 const INIT_CACHE_KEY = "init_data";
 const LOOP_CACHE_PREFIX = "loop_";
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
 
 function getCached<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -16,6 +22,24 @@ function getCached<T>(key: string): T | null {
     return cached.data as T;
   }
   return null;
+}
+
+// Get stale data (for stale-while-revalidate pattern)
+function getStale<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < STALE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+// Check if cache is stale (but still usable)
+function isStale(key: string): boolean {
+  const cached = cache.get(key);
+  if (!cached) return true;
+  const age = Date.now() - cached.timestamp;
+  return age > CACHE_TTL && age < STALE_TTL;
 }
 
 function setCache(key: string, data: unknown): void {
@@ -296,8 +320,21 @@ export const api = {
 
   // Get ALL initial data in ONE request (profile + projects + memberships)
   getInit: async (): Promise<InitData> => {
+    // Check fresh cache first
     const cached = getCached<InitData>(INIT_CACHE_KEY);
     if (cached) return cached;
+
+    // Check stale cache - return immediately but revalidate in background
+    const stale = getStale<InitData>(INIT_CACHE_KEY);
+    if (stale) {
+      // Background revalidation
+      deduplicatedRequest(INIT_CACHE_KEY + "_revalidate", async () => {
+        const data = await apiRequest<InitData>("/api/init");
+        setCache(INIT_CACHE_KEY, data);
+        return data;
+      }).catch(() => {}); // Ignore errors in background
+      return stale;
+    }
 
     // Use deduplication to prevent multiple concurrent init requests
     return deduplicatedRequest(INIT_CACHE_KEY, async () => {
@@ -307,11 +344,25 @@ export const api = {
     });
   },
 
-  // Get loop details + messages in ONE request
+  // Get loop details + messages in ONE request with stale-while-revalidate
   getLoopFull: async (name: string): Promise<LoopFullData> => {
     const cacheKey = LOOP_CACHE_PREFIX + name;
+    
+    // Check fresh cache first
     const cached = getCached<LoopFullData>(cacheKey);
     if (cached) return cached;
+
+    // Check stale cache - return immediately but revalidate in background
+    const stale = getStale<LoopFullData>(cacheKey);
+    if (stale) {
+      // Background revalidation
+      deduplicatedRequest(cacheKey + "_revalidate", async () => {
+        const data = await apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`);
+        setCache(cacheKey, data);
+        return data;
+      }).catch(() => {}); // Ignore errors in background
+      return stale;
+    }
 
     // Use deduplication to prevent multiple concurrent requests for same loop
     return deduplicatedRequest(cacheKey, async () => {
@@ -324,7 +375,8 @@ export const api = {
   // Prefetch loop data on hover (fire-and-forget)
   prefetchLoop: (name: string): void => {
     const cacheKey = LOOP_CACHE_PREFIX + name;
-    if (getCached(cacheKey) || prefetchCache.has(cacheKey)) return;
+    // Also check stale cache - no need to prefetch if we have recent data
+    if (getCached(cacheKey) || getStale(cacheKey) || prefetchCache.has(cacheKey)) return;
 
     const promise = apiRequest<LoopFullData>(`/api/loops/${encodeURIComponent(name)}/full`)
       .then(data => {

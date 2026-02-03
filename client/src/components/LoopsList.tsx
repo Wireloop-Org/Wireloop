@@ -58,13 +58,15 @@ const LoopItem = memo(function LoopItem({
       }`}
     >
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${
+        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
           isSelected 
             ? "bg-white/20" 
             : "bg-neutral-200/60 group-hover:bg-neutral-200"
         }`}
       >
-        💬
+        <svg className={`w-4 h-4 ${isSelected ? "text-white" : "text-neutral-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
       </div>
       <div className="flex-1 min-w-0">
         <div className={`font-medium truncate text-sm ${isSelected ? "text-white" : "text-neutral-800"}`}>

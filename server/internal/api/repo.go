@@ -175,6 +175,19 @@ func (h *Handler) HandleGetGitHubRepos(c *gin.Context) {
 		return
 	}
 
+	// Debug: Check if token exists
+	if user.AccessToken == "" {
+		log.Printf("[GitHub API] No access token stored for user %s", user.Username)
+		c.JSON(401, gin.H{
+			"error":   "No GitHub access token",
+			"message": "Please log out and log in again to connect your GitHub account",
+		})
+		return
+	}
+
+	// Debug: Log token length (not the actual token for security)
+	log.Printf("[GitHub API] Fetching repos for user %s (token length: %d)", user.Username, len(user.AccessToken))
+
 	// Fetch repos from GitHub API
 	req, err := http.NewRequest("GET", "https://api.github.com/user/repos?sort=updated&per_page=100", nil)
 	if err != nil {
@@ -194,6 +207,18 @@ func (h *Handler) HandleGetGitHubRepos(c *gin.Context) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		// Debug: Log the error response from GitHub
+		var errorBody map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&errorBody)
+		log.Printf("[GitHub API] Error %d for user %s: %v", resp.StatusCode, user.Username, errorBody)
+
+		if resp.StatusCode == 401 {
+			c.JSON(401, gin.H{
+				"error":   "GitHub token expired or invalid",
+				"message": "Please log out and log in again to refresh your GitHub access",
+			})
+			return
+		}
 		c.JSON(resp.StatusCode, gin.H{"error": fmt.Sprintf("GitHub API error: %d", resp.StatusCode)})
 		return
 	}

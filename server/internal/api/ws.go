@@ -22,6 +22,14 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 4096,
 }
 
+const (
+	// SOTA WebSocket connection settings
+	writeWait      = 10 * time.Second    // Time allowed to write a message
+	pongWait       = 60 * time.Second    // Time allowed to read the next pong message
+	pingPeriod     = (pongWait * 9) / 10 // Send pings at this interval (must be < pongWait)
+	maxMessageSize = 32 * 1024           // 32KB max message size
+)
+
 // WSMessage represents an incoming WebSocket message
 type WSMessage struct {
 	Type      string  `json:"type"`
@@ -113,6 +121,14 @@ func (h *Handler) HandleWS(c *gin.Context) {
 		return
 	}
 
+	// SOTA WebSocket settings for connection health
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
 	// Create client with cached user info - no more DB lookups per message!
 	client := chat.NewClient(conn, userID, user.Username, user.AvatarUrl.String)
 
@@ -133,6 +149,20 @@ func (h *Handler) HandleWS(c *gin.Context) {
 	})
 
 	go client.Write()
+
+	// Start ping ticker for connection health monitoring
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+
+	// Ping goroutine - keeps connection alive
+	go func() {
+		for range ticker.C {
+			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}()
 
 	// Read loop - handle incoming messages
 	for {
