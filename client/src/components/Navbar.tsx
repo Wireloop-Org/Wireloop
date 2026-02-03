@@ -73,10 +73,10 @@ export default function Navbar() {
                 Loops
               </Link>
               <Link
-                href="#gatekeeper"
+                href="#access"
                 className="hover:text-black transition-colors"
               >
-                Gatekeeper
+                How It Works
               </Link>
               <Link
                 href="#manifesto"
@@ -100,7 +100,7 @@ export default function Navbar() {
               onClick={handleLogin}
               className="bg-black text-white px-6 py-2.5 rounded-sm text-sm font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2"
             >
-              Start building <ArrowRight size={14} />
+              Connect GitHub <ArrowRight size={14} />
             </button>
           </div>
 
@@ -141,11 +141,11 @@ export default function Navbar() {
                 Loops
               </Link>
               <Link
-                href="#gatekeeper"
+                href="#access"
                 className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Gatekeeper
+                How It Works
               </Link>
               <Link
                 href="#manifesto"
@@ -169,7 +169,7 @@ export default function Navbar() {
                 }}
                 className="mt-4 bg-black text-white px-6 py-3 rounded-sm text-sm font-medium flex items-center justify-center gap-2"
               >
-                Start building <ArrowRight size={14} />
+                Connect GitHub <ArrowRight size={14} />
               </button>
             </div>
           </motion.div>

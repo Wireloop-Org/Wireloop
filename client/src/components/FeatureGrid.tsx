@@ -63,23 +63,23 @@ function ArrowsIcon() {
 
 const features = [
   {
-    title: "Proof-of-Contribution",
+    title: "Contribution Gating",
     description:
-      "Repository owners set programmable entry rules (merged PRs, reviews, labels). Only verified builders get access to the Loop.",
+      "Owners set entry rules based on merged PRs, reviews, or labels. Only verified contributors can join a Loop.",
     Icon: CoilIcon,
-    link: "#gatekeeper",
+    link: "#access",
   },
   {
-    title: "Gatekeeper Access",
+    title: "Repo-Native Channels",
     description:
-      "A high-performance Go service evaluates GitHub signals in real time and authorizes entry without friction.",
+      "Discussions stay anchored to code. Channels and threads map directly to repo workflows and releases.",
     Icon: SphereGridIcon,
-    link: "#gatekeeper",
+    link: "#access",
   },
   {
     title: "Realtime Loops",
     description:
-      "Persistent WebSockets keep discussions tight and technical, with context anchored to the repository timeline.",
+      "Fast WebSocket updates keep decisions in sync while preserving context from the codebase.",
     Icon: ArrowsIcon,
     link: "#loops",
   },
