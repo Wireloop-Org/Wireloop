@@ -124,14 +124,14 @@ export default function Hero() {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-zinc-900 leading-[1.05]">
-            Engineered for <br />
-            high-signal collaboration
+            Turn GitHub repos <br />
+            into high-signal Loops
           </h1>
 
           <p className="text-base md:text-lg text-zinc-500 max-w-md leading-relaxed">
-            Wireloop replaces fragmented channels with merit-based Loops mapped
-            to GitHub repos. Entry is granted by Proof-of-Contribution,
-            verified in real time by the Gatekeeper.
+            Wireloop creates repo-native collaboration spaces with real-time
+            channels, threads, and proof-of-contribution access. Keep every
+            discussion tied to the codebase and contributor intent.
           </p>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
@@ -139,13 +139,13 @@ export default function Hero() {
               href="#loops"
               className="bg-zinc-950 text-white px-8 py-4 rounded-sm text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-colors"
             >
-              Explore Loops <ArrowRight size={16} />
+              View Loops <ArrowRight size={16} />
             </Link>
             <Link
-              href="#gatekeeper"
+              href="#access"
               className="px-6 py-4 rounded-sm text-sm font-medium text-zinc-900 border border-zinc-200 hover:border-zinc-400 transition-colors"
             >
-              See Gatekeeper
+              How It Works
             </Link>
           </div>
         </motion.div>

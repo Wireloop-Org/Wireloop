@@ -11,8 +11,8 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
 
-      {/* Gatekeeper Section */}
-      <section id="gatekeeper" className="relative py-24 bg-white">
+      {/* Access Control Section */}
+      <section id="access" className="relative py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: Content */}
           <motion.div
@@ -23,28 +23,28 @@ export default function LandingPage() {
             transition={{ duration: 0.6 }}
           >
             <span className="text-xs uppercase tracking-widest text-zinc-500 font-medium">
-              Gatekeeper
+              How It Works
             </span>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900 leading-tight">
-              Real-time Proof-of-Contribution checks
+              Proof-of-Contribution access
             </h2>
             <p className="text-base text-zinc-500 leading-relaxed max-w-xl">
-              Wireloop&apos;s Go-based Gatekeeper validates GitHub contribution
-              criteria in real time. Owners define programmable rules, and only
-              qualified builders get access to the Loop.
+              Wireloop checks GitHub signals like merged PRs, reviews, and
+              labels in real time. Set rules per repo so only qualified
+              contributors can join, collaborate, and ship.
             </p>
             <div className="flex items-center gap-6 pt-2">
               <a
                 href="#loops"
                 className="text-sm font-medium text-zinc-900 border-b border-zinc-900 pb-0.5 hover:opacity-70 transition-opacity"
               >
-                Explore Loops
+                Browse Loops
               </a>
               <a
                 href="#manifesto"
                 className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
               >
-                Read Manifesto
+                Why Wireloop
               </a>
             </div>
           </motion.div>
@@ -108,9 +108,9 @@ export default function LandingPage() {
                 Built for builders, by builders
               </h2>
               <p className="text-base text-zinc-500 leading-relaxed">
-                Our advanced tools and expert strategies prevent potential
-                issues before they impact your workflow, delivering consistent
-                speed, reliability, and peace of mind.
+                Wireloop keeps collaboration focused by linking every discussion
+                to the repository. The goal is clarity, velocity, and high-signal
+                decision-making for maintainers and contributors.
               </p>
             </motion.div>
 
@@ -123,13 +123,12 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.15 }}
             >
               <p className="text-base text-zinc-500 leading-relaxed">
-                We leverage advanced analytics and automation to boost
-                performance, minimize downtime, and keep your development
-                running smoothly.
+                Loops organize channels and threads around code changes,
+                releases, and issues. Your team stays aligned without the noise.
               </p>
               <p className="text-base text-zinc-500 leading-relaxed">
-                Merit-based access ensures that every participant in a Loop has
-                demonstrated commitment to the codebase. No noise. Pure signal.
+                Merit-based access ensures every participant has proven
+                contribution to the repo. No noise. Pure signal.
               </p>
             </motion.div>
           </div>
@@ -156,8 +155,8 @@ export default function LandingPage() {
               <a href="#loops" className="hover:text-zinc-900 transition-colors">
                 Loops
               </a>
-              <a href="#gatekeeper" className="hover:text-zinc-900 transition-colors">
-                Gatekeeper
+              <a href="#access" className="hover:text-zinc-900 transition-colors">
+                How It Works
               </a>
               <a href="#manifesto" className="hover:text-zinc-900 transition-colors">
                 Manifesto

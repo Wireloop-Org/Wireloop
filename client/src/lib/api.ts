@@ -10,11 +10,6 @@ const STALE_TTL = 5 * 60 * 1000; // 5 minutes - serve stale while revalidating
 const INIT_CACHE_KEY = "init_data";
 const LOOP_CACHE_PREFIX = "loop_";
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
 function getCached<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
   const cached = cache.get(key);
@@ -35,13 +30,6 @@ function getStale<T>(key: string): T | null {
 }
 
 // Check if cache is stale (but still usable)
-function isStale(key: string): boolean {
-  const cached = cache.get(key);
-  if (!cached) return true;
-  const age = Date.now() - cached.timestamp;
-  return age > CACHE_TTL && age < STALE_TTL;
-}
-
 function setCache(key: string, data: unknown): void {
   cache.set(key, { data, timestamp: Date.now() });
 }

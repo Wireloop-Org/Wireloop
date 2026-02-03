@@ -57,8 +57,10 @@ export function useWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialConnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const messageQueueRef = useRef<Record<string, unknown>[]>([]);
+  const connectRef = useRef<() => void>(() => {});
 
   // Track callbacks in refs to avoid reconnection on callback change
   const onMessageRef = useRef(onMessage);
@@ -159,7 +161,7 @@ export function useWebSocket({
       updateStatus("reconnecting");
       reconnectTimeoutRef.current = setTimeout(() => {
         if (mountedRef.current && enabled) {
-          connect();
+          connectRef.current();
         }
       }, delay);
     };
@@ -170,6 +172,10 @@ export function useWebSocket({
 
     wsRef.current = ws;
   }, [projectId, channelId, enabled, updateStatus]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Send message with queueing for reconnection
   const send = useCallback((message: Record<string, unknown>) => {
@@ -185,15 +191,17 @@ export function useWebSocket({
   // Manual reconnect
   const reconnect = useCallback(() => {
     reconnectAttemptRef.current = 0;
-    connect();
-  }, [connect]);
+    connectRef.current();
+  }, []);
 
   // Initial connection and cleanup
   useEffect(() => {
     mountedRef.current = true;
 
     if (enabled && projectId) {
-      connect();
+      initialConnectTimeoutRef.current = setTimeout(() => {
+        connectRef.current();
+      }, 0);
     }
 
     return () => {
@@ -201,6 +209,10 @@ export function useWebSocket({
 
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      if (initialConnectTimeoutRef.current) {
+        clearTimeout(initialConnectTimeoutRef.current);
       }
 
       if (wsRef.current) {
