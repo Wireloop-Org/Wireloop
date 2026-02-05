@@ -26,12 +26,12 @@ export default function LandingPage() {
               How It Works
             </span>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900 leading-tight">
-              Proof-of-Contribution access
+              Merit-gated access, <br />zero gatekeepers
             </h2>
             <p className="text-base text-zinc-500 leading-relaxed max-w-xl">
-              Wireloop checks GitHub signals like merged PRs, reviews, and
-              labels in real time. Set rules per repo so only qualified
-              contributors can join, collaborate, and ship.
+              Wireloop verifies GitHub contributions in real time — merged PRs,
+              code reviews, labels — so only people who actually ship can join a
+              Loop. No invites, no waiting rooms.
             </p>
             <div className="flex items-center gap-6 pt-2">
               <a
@@ -60,27 +60,27 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <div className="text-3xl font-semibold text-zinc-900 mb-1">
-                  99.9%
+                  &lt;200ms
                 </div>
-                <div className="text-xs text-zinc-500">Verification uptime</div>
+                <div className="text-xs text-zinc-500">WebSocket latency</div>
               </div>
               <div>
                 <div className="text-3xl font-semibold text-zinc-900 mb-1">
-                  &lt;250ms
+                  AI
                 </div>
-                <div className="text-xs text-zinc-500">Decision latency</div>
+                <div className="text-xs text-zinc-500">Issue &amp; PR summaries</div>
               </div>
               <div>
                 <div className="text-3xl font-semibold text-zinc-900 mb-1">
-                  SQLC
+                  GitHub
                 </div>
-                <div className="text-xs text-zinc-500">Type-safe DB layer</div>
+                <div className="text-xs text-zinc-500">Native context layer</div>
               </div>
               <div>
                 <div className="text-3xl font-semibold text-zinc-900 mb-1">
-                  WS
+                  Realtime
                 </div>
-                <div className="text-xs text-zinc-500">Realtime streams</div>
+                <div className="text-xs text-zinc-500">Channels &amp; threads</div>
               </div>
             </div>
           </motion.div>
@@ -105,12 +105,13 @@ export default function LandingPage() {
                 Manifesto
               </span>
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900 leading-tight">
-                Built for builders, by builders
+                Ship code, not messages
               </h2>
               <p className="text-base text-zinc-500 leading-relaxed">
-                Wireloop keeps collaboration focused by linking every discussion
-                to the repository. The goal is clarity, velocity, and high-signal
-                decision-making for maintainers and contributors.
+                Every Loop is anchored to a repository. Channels map to
+                workflows, threads map to decisions, and AI surfaces the context
+                your team actually needs — issues, PRs, and summaries — right
+                inside the conversation.
               </p>
             </motion.div>
 
@@ -123,12 +124,13 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.15 }}
             >
               <p className="text-base text-zinc-500 leading-relaxed">
-                Loops organize channels and threads around code changes,
-                releases, and issues. Your team stays aligned without the noise.
+                Channels and threads stay tied to code changes, releases, and
+                milestones. Your team moves fast without losing context.
               </p>
               <p className="text-base text-zinc-500 leading-relaxed">
-                Merit-based access ensures every participant has proven
-                contribution to the repo. No noise. Pure signal.
+                Contribution-based access means every voice in the room has
+                earned their seat. No politics, no noise — just the people who
+                build.
               </p>
             </motion.div>
           </div>

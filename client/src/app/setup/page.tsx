@@ -83,30 +83,35 @@ export default function ProfileSetup() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none opacity-40" />
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.03) 1px, transparent 0)`,
+          backgroundSize: '24px 24px',
+        }} />
+      </div>
 
-      <div className="w-full max-w-md relative z-10 animate-scale-in">
+      <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-foreground">Complete Your Profile</h1>
-          <p className="text-muted">Let others know who you are</p>
+          <h1 className="text-3xl font-bold mb-2 text-neutral-900">Complete Your Profile</h1>
+          <p className="text-neutral-500">Let others know who you are</p>
         </div>
 
         {/* Form Card */}
         <form
           onSubmit={handleSubmit}
-          className="bg-card border border-border rounded-2xl p-8 shadow-xl"
+          className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm"
         >
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
               {error}
             </div>
           )}
@@ -118,7 +123,7 @@ export default function ProfileSetup() {
               onClick={handleAvatarClick}
               className="relative group"
             >
-              <div className="w-28 h-28 rounded-full overflow-hidden bg-secondary border-2 border-border group-hover:border-accent transition-colors relative shadow-lg">
+              <div className="w-28 h-28 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-200 group-hover:border-neutral-400 transition-colors relative shadow-sm">
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
@@ -128,7 +133,7 @@ export default function ProfileSetup() {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-4xl text-muted">
+                  <div className="w-full h-full flex items-center justify-center text-4xl text-neutral-400">
                     {displayName?.[0]?.toUpperCase() ||
                       profile?.username?.[0]?.toUpperCase() ||
                       "?"}
@@ -164,14 +169,14 @@ export default function ProfileSetup() {
               onChange={handleFileChange}
               className="hidden"
             />
-            <p className="text-xs text-muted mt-3">
+            <p className="text-xs text-neutral-400 mt-3">
               Click to upload (max 200KB)
             </p>
           </div>
 
           {/* Display Name */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-muted mb-2">
+            <label className="block text-sm font-medium text-neutral-500 mb-2">
               Display Name
             </label>
             <input
@@ -179,10 +184,10 @@ export default function ProfileSetup() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
-              className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
+              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white focus:ring-4 focus:ring-neutral-100 transition-all"
               placeholder="Your name"
             />
-            <p className="text-xs text-muted mt-1 text-right">
+            <p className="text-xs text-neutral-400 mt-1 text-right">
               {displayName.length}/50
             </p>
           </div>
@@ -192,14 +197,14 @@ export default function ProfileSetup() {
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="flex-1 px-6 py-3 rounded-xl border border-border text-muted hover:text-foreground hover:bg-secondary transition-colors"
+              className="flex-1 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors"
             >
               Skip
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-6 py-3 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover-lift shadow-lg shadow-accent/20"
+              className="flex-1 px-6 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? (
                 <>
@@ -214,9 +219,9 @@ export default function ProfileSetup() {
         </form>
 
         {/* Username note */}
-        <p className="text-center text-xs text-muted mt-6">
+        <p className="text-center text-xs text-neutral-400 mt-6">
           Signed in as{" "}
-          <span className="text-foreground font-medium">@{profile?.username}</span>
+          <span className="text-neutral-900 font-medium">@{profile?.username}</span>
         </p>
       </div>
     </div>

@@ -94,44 +94,37 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-mesh pointer-events-none opacity-40" />
+    <div className="min-h-screen bg-neutral-50 relative overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.03) 1px, transparent 0)`,
+          backgroundSize: '24px 24px',
+        }} />
+      </div>
 
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-neutral-200/50 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/20">
-              <svg
-                className="w-4 h-4 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+            <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full" />
             </div>
-            <span className="font-semibold text-foreground">Wireloop</span>
+            <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
           </button>
 
           <button
             onClick={handleLogout}
-            className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors font-medium"
+            className="px-4 py-2 text-sm text-neutral-500 hover:text-neutral-900 transition-colors font-medium"
           >
             Sign out
           </button>
@@ -143,10 +136,10 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => router.push("/")}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             <svg
-              className="w-5 h-5 text-muted hover:text-foreground"
+              className="w-5 h-5 text-neutral-500 hover:text-neutral-900"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -159,27 +152,27 @@ export default function ProfilePage() {
               />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold text-foreground">Profile Settings</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">Profile Settings</h1>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-card border border-border rounded-2xl p-8 shadow-xl animate-scale-in"
+          className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm"
         >
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-500 text-sm">
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 text-sm">
               {success}
             </div>
           )}
 
           {/* Avatar */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-muted mb-4">
+            <label className="block text-sm font-medium text-neutral-500 mb-4">
               Profile Photo
             </label>
             <div className="flex items-center gap-6">
@@ -188,7 +181,7 @@ export default function ProfilePage() {
                 onClick={handleAvatarClick}
                 className="relative group"
               >
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-secondary border-2 border-border group-hover:border-accent transition-colors relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-200 group-hover:border-neutral-400 transition-colors relative">
                   {avatarPreview ? (
                     <Image
                       src={avatarPreview}
@@ -198,7 +191,7 @@ export default function ProfilePage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl text-muted">
+                    <div className="w-full h-full flex items-center justify-center text-2xl text-neutral-400">
                       {displayName?.[0]?.toUpperCase() ||
                         profile?.username?.[0]?.toUpperCase() ||
                         "?"}
@@ -235,15 +228,15 @@ export default function ProfilePage() {
                 className="hidden"
               />
               <div className="text-sm">
-                <p className="text-foreground">Upload a new photo</p>
-                <p className="text-muted">JPG or PNG. Max 200KB.</p>
+                <p className="text-neutral-900">Upload a new photo</p>
+                <p className="text-neutral-500">JPG or PNG. Max 200KB.</p>
               </div>
             </div>
           </div>
 
           {/* Display Name */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-muted mb-2">
+            <label className="block text-sm font-medium text-neutral-500 mb-2">
               Display Name
             </label>
             <input
@@ -251,20 +244,20 @@ export default function ProfilePage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
-              className="w-full px-4 py-3 bg-secondary/30 border border-border rounded-xl text-foreground placeholder-muted focus:outline-none focus:border-accent focus:bg-card transition-colors"
+              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white focus:ring-4 focus:ring-neutral-100 transition-all"
               placeholder="Your name"
             />
           </div>
 
           {/* Username (read-only) */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-muted mb-2">
+            <label className="block text-sm font-medium text-neutral-500 mb-2">
               Username
             </label>
-            <div className="px-4 py-3 bg-secondary/50 border border-border rounded-xl text-muted">
+            <div className="px-4 py-3 bg-neutral-100 border border-neutral-200 rounded-xl text-neutral-500">
               @{profile?.username}
             </div>
-            <p className="text-xs text-muted mt-1">
+            <p className="text-xs text-neutral-400 mt-1">
               Username is linked to your GitHub account
             </p>
           </div>
@@ -274,7 +267,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 hover-lift"
+              className="px-8 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (
                 <>
