@@ -11,6 +11,7 @@ import {
   createWebSocket,
   VerifyAccessResponse,
 } from "@/lib/api";
+import GitHubPanel from "./GitHubPanel";
 
 // ============================================================================
 // TYPES
@@ -575,6 +576,9 @@ export default function ChatWindow({
   const [threadReplies, setThreadReplies] = useState<Message[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
 
+  // GitHub panel state
+  const [showGitHub, setShowGitHub] = useState(false);
+
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
 
@@ -946,6 +950,29 @@ export default function ChatWindow({
     }
   }, [handleSend]);
 
+  // Handle sharing GitHub summary to chat
+  const handleShareToChat = useCallback((content: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+    wsRef.current.send(JSON.stringify({
+      type: "message",
+      content,
+      channel_id: currentChannel?.id,
+    }));
+
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      content,
+      sender_id: currentUserId || "",
+      sender_username: "You",
+      sender_avatar: "",
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    updateCachedMessage(channelId, (prev) => [...prev, optimisticMsg]);
+    setShowGitHub(false);
+  }, [currentChannel?.id, currentUserId, channelId]);
+
   // Handle verify access
   const handleVerify = async () => {
     setVerifying(true);
@@ -1181,9 +1208,28 @@ export default function ChatWindow({
               <p className="text-xs text-neutral-500">{loopDetails.members?.length || 0} members</p>
             </div>
           </div>
-          <div className={`flex items-center gap-2 text-xs font-medium ${connected ? "text-emerald-500" : "text-amber-500"}`}>
-            <span className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
-            {connected ? "Live" : "Reconnecting..."}
+          <div className="flex items-center gap-3">
+            <motion.button
+              onClick={() => {
+                setShowGitHub(!showGitHub);
+                if (!showGitHub) setThreadParent(null);
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`p-1.5 rounded-lg transition-colors ${
+                showGitHub
+                  ? "bg-neutral-900 text-white"
+                  : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-900"
+              }`}
+              title="GitHub Issues & PRs"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+              </svg>
+            </motion.button>
+            <div className="flex items-center gap-2" title={connected ? "Connected" : "Reconnecting"}>
+              <span className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+            </div>
           </div>
         </div>
 
@@ -1257,7 +1303,7 @@ export default function ChatWindow({
 
       {/* Thread panel */}
       <AnimatePresence>
-        {threadParent && (
+        {threadParent && !showGitHub && (
           <ThreadPanel
             parentMessage={threadParent}
             replies={threadReplies}
@@ -1270,6 +1316,17 @@ export default function ChatWindow({
             }}
             onSendReply={handleSendThreadReply}
             onDeleteReply={handleDeleteClick}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* GitHub Context panel */}
+      <AnimatePresence>
+        {showGitHub && (
+          <GitHubPanel
+            loopName={loopDetails.name}
+            onShareToChat={handleShareToChat}
+            onClose={() => setShowGitHub(false)}
           />
         )}
       </AnimatePresence>

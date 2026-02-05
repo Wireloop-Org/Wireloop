@@ -14,18 +14,13 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+    transition: { staggerChildren: 0.04, delayChildren: 0.05 }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } }
-};
-
-const cardHover = {
-  scale: 1.02,
-  transition: { duration: 0.2, ease: "easeOut" as const }
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } }
 };
 
 // Icon component for StatCard
@@ -73,9 +68,7 @@ const LoopCard = memo(function LoopCard({
     return (
         <motion.button
             onClick={onClick}
-            whileHover={cardHover}
-            whileTap={{ scale: 0.98 }}
-            className="p-5 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-shadow text-left group w-full"
+            className="p-5 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-all text-left group w-full"
         >
             <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-50 border border-neutral-200 flex items-center justify-center">
@@ -115,7 +108,6 @@ const StatCard = memo(function StatCard({
 }) {
     return (
         <motion.div 
-            whileHover={cardHover}
             className={`relative p-6 rounded-2xl overflow-hidden ${gradient || 'bg-white border border-neutral-200'}`}
         >
             {gradient && (
@@ -273,9 +265,8 @@ export default function Dashboard() {
 
                     {/* Quick Actions */}
                     <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-                        <motion.div 
-                            whileHover={cardHover}
-                            className="p-6 rounded-2xl bg-white border border-neutral-200"
+                        <div 
+                            className="p-6 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-all"
                         >
                             <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 border border-emerald-200 flex items-center justify-center">
@@ -296,10 +287,9 @@ export default function Dashboard() {
                                     </button>
                                 </div>
                             </div>
-                        </motion.div>
-                        <motion.div 
-                            whileHover={cardHover}
-                            className="p-6 rounded-2xl bg-white border border-neutral-200"
+                        </div>
+                        <div 
+                            className="p-6 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-all"
                         >
                             <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 border border-blue-200 flex items-center justify-center">
@@ -320,7 +310,7 @@ export default function Dashboard() {
                                     </button>
                                 </div>
                             </div>
-                        </motion.div>
+                        </div>
                     </motion.div>
 
                     {/* Joined Loops */}
@@ -380,8 +370,7 @@ export default function Dashboard() {
                                 ))}
                             </div>
                         ) : (
-                            <motion.div 
-                                whileHover={cardHover}
+                            <div 
                                 className="text-center py-16 rounded-2xl border-2 border-dashed border-neutral-300 bg-white"
                             >
                                 <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
@@ -399,7 +388,7 @@ export default function Dashboard() {
                                 >
                                     Create Your First Loop
                                 </button>
-                            </motion.div>
+                            </div>
                         )}
                     </motion.div>
                 </motion.div>

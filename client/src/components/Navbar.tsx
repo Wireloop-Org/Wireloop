@@ -84,9 +84,6 @@ export default function Navbar() {
               >
                 Manifesto
               </Link>
-              <Link href="/blog" className="hover:text-black transition-colors">
-                Blog
-              </Link>
             </div>
           </div>
 
@@ -153,13 +150,6 @@ export default function Navbar() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Manifesto
-              </Link>
-              <Link
-                href="/blog"
-                className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Blog
               </Link>
 
               <button

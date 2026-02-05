@@ -19,18 +19,13 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.1 }
+    transition: { staggerChildren: 0.03, delayChildren: 0.05 }
   }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } }
-};
-
-const cardHover = {
-  scale: 1.01,
-  transition: { duration: 0.2, ease: "easeOut" as const }
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as const } }
 };
 
 export default function BrowseLoopsPage() {
@@ -290,8 +285,6 @@ export default function BrowseLoopsPage() {
                   <motion.button
                     key={loop.id}
                     variants={itemVariants}
-                    whileHover={cardHover}
-                    whileTap={{ scale: 0.99 }}
                     onClick={() => handleSelectLoop(loop)}
                     className={`p-5 rounded-2xl border text-left transition-all ${selectedLoop?.id === loop.id
                       ? "bg-neutral-900 border-neutral-900 text-white shadow-xl shadow-neutral-900/20"
@@ -529,8 +522,10 @@ export default function BrowseLoopsPage() {
                     exit={{ opacity: 0, x: 20 }}
                     className="p-8 rounded-2xl bg-white border-2 border-dashed border-neutral-300 text-center"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center text-3xl mx-auto mb-4">
-                      👈
+                    <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                      </svg>
                     </div>
                     <h3 className="font-medium mb-2 text-neutral-900">Select a Loop</h3>
                     <p className="text-sm text-neutral-500">

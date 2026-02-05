@@ -200,6 +200,11 @@ func main() {
 		protected.GET("/messages/:message_id/replies", Handler.HandleGetThreadReplies)
 		protected.DELETE("/messages/:message_id", Handler.HandleDeleteMessage)
 
+		// GitHub Context + AI Summarization
+		protected.GET("/loops/:name/github/issues", Handler.HandleGetGitHubIssues)
+		protected.GET("/loops/:name/github/pulls", Handler.HandleGetGitHubPRs)
+		protected.POST("/loops/:name/github/summarize", Handler.HandleGitHubSummarize)
+
 		// WebSocket - rate limited to prevent connection spam
 		protected.GET("/ws", middleware.WebSocketRateLimitMiddleware(), Handler.HandleWS)
 	}

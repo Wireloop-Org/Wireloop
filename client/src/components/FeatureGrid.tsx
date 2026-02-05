@@ -4,59 +4,39 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 // Wireframe-style SVG icons matching the design
-function CoilIcon() {
+function ShieldIcon() {
   return (
     <svg viewBox="0 0 80 80" fill="none" className="w-20 h-20" strokeWidth="1">
-      <ellipse cx="40" cy="15" rx="28" ry="8" stroke="currentColor" />
-      <ellipse cx="40" cy="25" rx="28" ry="8" stroke="currentColor" />
-      <ellipse cx="40" cy="35" rx="28" ry="8" stroke="currentColor" />
-      <ellipse cx="40" cy="45" rx="28" ry="8" stroke="currentColor" />
-      <ellipse cx="40" cy="55" rx="28" ry="8" stroke="currentColor" />
-      <ellipse cx="40" cy="65" rx="28" ry="8" stroke="currentColor" />
+      <path d="M40 8L12 22V38C12 56 24 70 40 74C56 70 68 56 68 38V22L40 8Z" stroke="currentColor" />
+      <path d="M30 40L37 47L52 32" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function SphereGridIcon() {
+function BranchIcon() {
   return (
-    <svg viewBox="0 0 80 80" fill="none" className="w-20 h-20" strokeWidth="0.5">
-      {/* Create a grid of dots in a circular pattern */}
-      {Array.from({ length: 9 }).map((_, row) =>
-        Array.from({ length: 9 }).map((_, col) => {
-          const x = 10 + col * 7.5;
-          const y = 10 + row * 7.5;
-          const centerX = 40;
-          const centerY = 40;
-          const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-          const maxDistance = 35;
-          if (distance > maxDistance) return null;
-          const opacity = 1 - distance / maxDistance;
-          return (
-            <circle
-              key={`${row}-${col}`}
-              cx={x}
-              cy={y}
-              r={1.5}
-              fill="currentColor"
-              opacity={opacity * 0.8 + 0.2}
-            />
-          );
-        })
-      )}
+    <svg viewBox="0 0 80 80" fill="none" className="w-20 h-20" strokeWidth="1">
+      <circle cx="25" cy="20" r="6" stroke="currentColor" />
+      <circle cx="55" cy="20" r="6" stroke="currentColor" />
+      <circle cx="25" cy="60" r="6" stroke="currentColor" />
+      <line x1="25" y1="26" x2="25" y2="54" stroke="currentColor" />
+      <path d="M55 26V35C55 42 48 48 40 48H25" stroke="currentColor" />
     </svg>
   );
 }
 
-function ArrowsIcon() {
+function SparkleIcon() {
   return (
     <svg viewBox="0 0 80 80" fill="none" className="w-20 h-20" strokeWidth="1">
-      {/* Multiple diagonal arrows */}
-      {[0, 1, 2, 3, 4].map((i) => (
-        <g key={i} transform={`translate(${i * 12}, ${i * 8})`}>
-          <line x1="10" y1="35" x2="40" y2="15" stroke="currentColor" />
-          <polyline points="35,12 40,15 37,20" stroke="currentColor" fill="none" />
-        </g>
-      ))}
+      <path d="M40 12V68" stroke="currentColor" strokeLinecap="round" />
+      <path d="M12 40H68" stroke="currentColor" strokeLinecap="round" />
+      <path d="M22 22L58 58" stroke="currentColor" strokeLinecap="round" />
+      <path d="M58 22L22 58" stroke="currentColor" strokeLinecap="round" />
+      <circle cx="40" cy="40" r="6" stroke="currentColor" fill="currentColor" opacity="0.15" />
+      <circle cx="40" cy="12" r="2.5" fill="currentColor" />
+      <circle cx="40" cy="68" r="2.5" fill="currentColor" />
+      <circle cx="12" cy="40" r="2.5" fill="currentColor" />
+      <circle cx="68" cy="40" r="2.5" fill="currentColor" />
     </svg>
   );
 }
@@ -65,23 +45,23 @@ const features = [
   {
     title: "Contribution Gating",
     description:
-      "Owners set entry rules based on merged PRs, reviews, or labels. Only verified contributors can join a Loop.",
-    Icon: CoilIcon,
+      "Loop owners define entry rules — merged PRs, reviews, or labels. Only verified contributors can join, keeping every conversation high-signal.",
+    Icon: ShieldIcon,
     link: "#access",
   },
   {
-    title: "Repo-Native Channels",
+    title: "GitHub Context Panel",
     description:
-      "Discussions stay anchored to code. Channels and threads map directly to repo workflows and releases.",
-    Icon: SphereGridIcon,
+      "Browse issues and pull requests directly inside the chat. Filter by state, view branches, labels, and comments without leaving the Loop.",
+    Icon: BranchIcon,
     link: "#access",
   },
   {
-    title: "Realtime Loops",
+    title: "AI Summaries",
     description:
-      "Fast WebSocket updates keep decisions in sync while preserving context from the codebase.",
-    Icon: ArrowsIcon,
-    link: "#loops",
+      "Summarize any issue or PR with one click and share the digest straight into the conversation. Less tab-switching, faster decisions.",
+    Icon: SparkleIcon,
+    link: "#access",
   },
 ];
 
@@ -118,7 +98,7 @@ export default function FeatureGrid() {
             transition={{ duration: 0.6 }}
           >
             How Wireloop <br />
-            keeps Loops high-signal
+            works for your team
           </motion.h2>
           <motion.p
             className="text-sm text-zinc-500 max-w-xs leading-relaxed"
@@ -127,8 +107,8 @@ export default function FeatureGrid() {
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            A merit-based access layer plus realtime collaboration ensures the
-            conversation stays technical, productive, and builder-first.
+            Contribution-based access, in-app GitHub context, and AI
+            summaries — everything a repo team needs to stay aligned.
           </motion.p>
         </div>
 

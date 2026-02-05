@@ -266,6 +266,54 @@ export interface VerifyAccessResponse {
   message: string;
   results: VerificationResult[];
 }
+
+// GitHub Context types
+export interface GitHubLabel {
+  name: string;
+  color: string;
+}
+
+export interface GitHubIssueItem {
+  number: number;
+  title: string;
+  body: string;
+  state: string;
+  labels: GitHubLabel[];
+  user: { login: string; avatar_url: string };
+  comments: number;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+}
+
+export interface GitHubPRItem {
+  number: number;
+  title: string;
+  body: string;
+  state: string;
+  draft: boolean;
+  labels: GitHubLabel[];
+  user: { login: string; avatar_url: string };
+  comments: number;
+  additions: number;
+  deletions: number;
+  created_at: string;
+  updated_at: string;
+  merged_at: string | null;
+  html_url: string;
+  head: { ref: string };
+  base: { ref: string };
+}
+
+export interface GitHubSummary {
+  summary: string;
+  type: string;
+  number: number;
+  title: string;
+  repo_name: string;
+  url: string;
+  generated_at: string;
+}
 export interface InitData {
   profile: {
     id: string;
@@ -552,4 +600,24 @@ export const api = {
       return data;
     });
   },
+
+  // GitHub Context + AI Summarization
+  getGitHubIssues: (loopName: string, state = "open") =>
+    apiRequest<{ issues: GitHubIssueItem[]; repo_name: string }>(
+      `/api/loops/${encodeURIComponent(loopName)}/github/issues?state=${state}`
+    ),
+
+  getGitHubPRs: (loopName: string, state = "open") =>
+    apiRequest<{ pull_requests: GitHubPRItem[]; repo_name: string }>(
+      `/api/loops/${encodeURIComponent(loopName)}/github/pulls?state=${state}`
+    ),
+
+  summarizeGitHubItem: (loopName: string, itemType: "issue" | "pr", number: number) =>
+    apiRequest<GitHubSummary>(
+      `/api/loops/${encodeURIComponent(loopName)}/github/summarize`,
+      {
+        method: "POST",
+        body: JSON.stringify({ type: itemType, number }),
+      }
+    ),
 };
