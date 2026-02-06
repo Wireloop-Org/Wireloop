@@ -113,7 +113,29 @@ type SummaryResponse struct {
 // Helpers
 // ============================================================================
 
+// Shared HTTP client with connection pooling for GitHub API calls
+var githubHTTPClient = &http.Client{
+	Timeout: 15 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
+// Cache repo full names to avoid repeated GitHub API calls
+var repoNameCache sync.Map // map[int64]string
+
 func getRepoFullName(repoID int64, accessToken string) (string, error) {
+	// Check cache first
+	if cached, ok := repoNameCache.Load(repoID); ok {
+		return cached.(string), nil
+	}
+
+	if repoID == 0 {
+		return "", fmt.Errorf("no GitHub repository linked to this loop (repo ID is 0)")
+	}
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.github.com/repositories/%d", repoID), nil)
 	if err != nil {
 		return "", err
@@ -121,14 +143,26 @@ func getRepoFullName(repoID int64, accessToken string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	resp, err := githubHTTPClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to connect to GitHub API: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("GitHub API error: %d", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("[github] getRepoFullName failed: repoID=%d status=%d body=%s", repoID, resp.StatusCode, string(bodyBytes))
+
+		switch resp.StatusCode {
+		case 401:
+			return "", fmt.Errorf("GitHub token expired or invalid — try signing out and back in")
+		case 403:
+			return "", fmt.Errorf("GitHub token lacks permission to access this repository")
+		case 404:
+			return "", fmt.Errorf("repository not found (ID: %d) — it may have been deleted or made private", repoID)
+		default:
+			return "", fmt.Errorf("GitHub API error %d: %s", resp.StatusCode, string(bodyBytes))
+		}
 	}
 
 	var repo struct {
@@ -137,6 +171,10 @@ func getRepoFullName(repoID int64, accessToken string) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&repo); err != nil {
 		return "", err
 	}
+
+	// Cache the result
+	repoNameCache.Store(repoID, repo.FullName)
+
 	return repo.FullName, nil
 }
 
@@ -147,7 +185,7 @@ func githubAPIGet(url, accessToken string) (*http.Response, error) {
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	return (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	return githubHTTPClient.Do(req)
 }
 
 // ============================================================================
@@ -186,7 +224,7 @@ func (h *Handler) HandleGetGitHubIssues(c *gin.Context) {
 	repoFullName, err := getRepoFullName(project.GithubRepoID, user.AccessToken)
 	if err != nil {
 		log.Printf("[GitHub] Failed to get repo name for ID %d: %v", project.GithubRepoID, err)
-		c.JSON(500, gin.H{"error": "failed to resolve repository"})
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -262,7 +300,7 @@ func (h *Handler) HandleGetGitHubPRs(c *gin.Context) {
 	repoFullName, err := getRepoFullName(project.GithubRepoID, user.AccessToken)
 	if err != nil {
 		log.Printf("[GitHub] Failed to get repo name for ID %d: %v", project.GithubRepoID, err)
-		c.JSON(500, gin.H{"error": "failed to resolve repository"})
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -340,7 +378,8 @@ func (h *Handler) HandleGitHubSummarize(c *gin.Context) {
 
 	repoFullName, err := getRepoFullName(project.GithubRepoID, user.AccessToken)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to resolve repository"})
+		log.Printf("[GitHub] Failed to get repo name for ID %d: %v", project.GithubRepoID, err)
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -482,33 +521,43 @@ func itemType(t string) string {
 }
 
 // ============================================================================
-// AI Summary Generation (OpenAI-compatible API)
+// AI Summary Generation (Gemini API)
 // ============================================================================
 
-type openAIMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type geminiPart struct {
+	Text string `json:"text"`
 }
 
-type openAIRequest struct {
-	Model       string          `json:"model"`
-	Messages    []openAIMessage `json:"messages"`
-	MaxTokens   int             `json:"max_tokens"`
-	Temperature float64         `json:"temperature"`
+type geminiContent struct {
+	Role  string       `json:"role,omitempty"`
+	Parts []geminiPart `json:"parts"`
 }
 
-type openAIResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
+type geminiGenerationConfig struct {
+	Temperature     float64 `json:"temperature"`
+	MaxOutputTokens int     `json:"maxOutputTokens"`
+}
+
+type geminiRequest struct {
+	Contents          []geminiContent        `json:"contents"`
+	SystemInstruction *geminiContent         `json:"systemInstruction,omitempty"`
+	GenerationConfig  geminiGenerationConfig `json:"generationConfig"`
+}
+
+type geminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
 }
 
 func generateAISummary(typ, title, body, state, repoName string, number int, comments []GitHubComment, reviews []GitHubReview, pr *GitHubPR) (string, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("OPENAI_API_KEY not set")
+		return "", fmt.Errorf("GEMINI_API_KEY not set")
 	}
 
 	var prompt strings.Builder
@@ -573,14 +622,22 @@ Format:
 
 Be concise. No unnecessary jargon.`
 
-	reqBody := openAIRequest{
-		Model: getModelName(),
-		Messages: []openAIMessage{
-			{Role: "system", Content: system},
-			{Role: "user", Content: prompt.String()},
+	model := os.Getenv("GEMINI_MODEL")
+	if model == "" {
+		model = "gemini-2.0-flash"
+	}
+
+	reqBody := geminiRequest{
+		Contents: []geminiContent{
+			{Role: "user", Parts: []geminiPart{{Text: prompt.String()}}},
 		},
-		MaxTokens:   500,
-		Temperature: 0.3,
+		SystemInstruction: &geminiContent{
+			Parts: []geminiPart{{Text: system}},
+		},
+		GenerationConfig: geminiGenerationConfig{
+			Temperature:     0.3,
+			MaxOutputTokens: 500,
+		},
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -588,47 +645,35 @@ Be concise. No unnecessary jargon.`
 		return "", err
 	}
 
-	apiBase := os.Getenv("OPENAI_API_BASE")
-	if apiBase == "" {
-		apiBase = "https://api.openai.com/v1"
-	}
+	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey)
 
-	httpReq, err := http.NewRequest("POST", apiBase+"/chat/completions", bytes.NewBuffer(jsonBody))
+	httpReq, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("AI API request failed: %v", err)
+		return "", fmt.Errorf("Gemini API request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("AI API error %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("Gemini API error %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	var aiResp openAIResponse
+	var aiResp geminiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&aiResp); err != nil {
 		return "", err
 	}
 
-	if len(aiResp.Choices) == 0 {
-		return "", fmt.Errorf("no response from AI")
+	if len(aiResp.Candidates) == 0 || len(aiResp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("no response from Gemini")
 	}
 
-	return aiResp.Choices[0].Message.Content, nil
-}
-
-func getModelName() string {
-	model := os.Getenv("OPENAI_MODEL")
-	if model == "" {
-		return "gpt-4o-mini"
-	}
-	return model
+	return aiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
 // Fallback summary when AI is unavailable
