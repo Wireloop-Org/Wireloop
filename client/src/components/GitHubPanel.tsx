@@ -9,6 +9,7 @@ import {
   GitHubPRItem,
   GitHubSummary,
 } from "@/lib/api";
+import { renderMarkdown } from "@/lib/markdown";
 
 // ============================================================================
 // Types
@@ -110,7 +111,7 @@ const SummaryCard = memo(function SummaryCard({
         </button>
       </div>
       <div className="text-neutral-700 whitespace-pre-wrap text-[13px] leading-relaxed">
-        {summary.summary}
+        {renderMarkdown(summary.summary)}
       </div>
       <div className="mt-3 flex items-center gap-2">
         <motion.button

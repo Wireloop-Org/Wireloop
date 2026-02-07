@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -16,6 +17,8 @@ type GitHubTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	Scope       string `json:"scope"`
+	Error       string `json:"error"`
+	ErrorDesc   string `json:"error_description"`
 }
 
 // GitHubUser represents the user profile from GitHub API
@@ -51,6 +54,17 @@ func ExchangeCodeForToken(code string) (string, error) {
 		return "", err
 	}
 
+	if tokenResp.Error != "" {
+		log.Printf("[auth] GitHub token exchange error: %s - %s", tokenResp.Error, tokenResp.ErrorDesc)
+		return "", fmt.Errorf("GitHub OAuth error: %s", tokenResp.ErrorDesc)
+	}
+
+	if tokenResp.AccessToken == "" {
+		log.Printf("[auth] GitHub returned empty access token")
+		return "", fmt.Errorf("GitHub returned empty access token")
+	}
+
+	log.Printf("[auth] Token exchange successful, scope: %s", tokenResp.Scope)
 	return tokenResp.AccessToken, nil
 }
 
@@ -72,6 +86,7 @@ func GetGitHubProfile(accessToken string) (*GitHubUser, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[auth] GitHub /user API returned status %d for token: %s...", resp.StatusCode, accessToken[:min(10, len(accessToken))])
 		return nil, fmt.Errorf("GitHub API returned status: %d", resp.StatusCode)
 	}
 
@@ -92,7 +107,7 @@ func GenerateJWT(userID pgtype.UUID) (string, error) {
 
 	claims := jwt.MapClaims{
 		"user_id": userID.Bytes,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
+		"exp":     time.Now().Add(time.Hour * 24 * 60).Unix(), // 60 days
 		"iat":     time.Now().Unix(),
 	}
 
