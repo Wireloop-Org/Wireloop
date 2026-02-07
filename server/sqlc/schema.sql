@@ -80,3 +80,33 @@ ON messages (channel_id, created_at DESC);
 
 CREATE INDEX idx_channels_project
 ON channels (project_id);
+
+-- ============================================================================
+-- Pinned Messages
+-- ============================================================================
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID REFERENCES users(id);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
+
+-- ============================================================================
+-- Notifications (mentions, replies, pins)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    message_id BIGINT REFERENCES messages(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
+    actor_id UUID NOT NULL REFERENCES users(id),
+    actor_username TEXT NOT NULL,
+    content_preview TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+ON notifications (user_id, is_read, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_messages_pinned
+ON messages (channel_id, is_pinned) WHERE is_pinned = TRUE;

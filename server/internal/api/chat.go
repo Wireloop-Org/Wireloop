@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -95,6 +96,13 @@ func (h *Handler) HandleSendMessage(c *gin.Context) {
 		"type":    "message",
 		"payload": msg,
 	})
+
+	// Process @mentions asynchronously
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		h.ProcessMentions(ctx, req.MessageBody, uid, user.Username, msgID, channelID, channelID)
+	}()
 
 	c.JSON(200, msg)
 }

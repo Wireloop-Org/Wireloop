@@ -10,6 +10,7 @@ import {
   Channel,
   createWebSocket,
   VerifyAccessResponse,
+  MemberSearchResult,
 } from "@/lib/api";
 import GitHubPanel from "./GitHubPanel";
 import { renderMarkdown } from "@/lib/markdown";
@@ -72,17 +73,20 @@ const MessageItem = memo(function MessageItem({
   isOwner,
   onReply,
   onDelete,
+  onPin,
 }: {
   msg: Message;
   currentUserId?: string;
   isOwner: boolean;
   onReply: (msg: Message) => void;
   onDelete: (msg: Message) => void;
+  onPin: (msg: Message) => void;
 }) {
   const isOwnMessage = msg.sender_id === currentUserId;
   const canDelete = isOwnMessage || isOwner;
   const isDeleted = msg.content === "[Message deleted]";
   const replyCount = msg.reply_count ?? 0;
+  const isPinned = msg.is_pinned ?? false;
 
   return (
     <motion.div 
@@ -118,9 +122,19 @@ const MessageItem = memo(function MessageItem({
             })}
           </span>
         </div>
-        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
+        <div className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
           {isDeleted ? msg.content : renderMarkdown(msg.content)}
-        </p>
+        </div>
+        
+        {/* Pin indicator */}
+        {isPinned && (
+          <div className="flex items-center gap-1 mt-1 text-[11px] text-amber-600">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+            </svg>
+            Pinned
+          </div>
+        )}
         
         {/* Reply count & action buttons */}
         <div className="flex items-center gap-3 mt-1">
@@ -147,6 +161,21 @@ const MessageItem = memo(function MessageItem({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
                 Reply
+              </button>
+            )}
+            {!isDeleted && (
+              <button
+                onClick={() => onPin(msg)}
+                className={`text-xs flex items-center gap-1 ${
+                  isPinned
+                    ? "text-amber-500 hover:text-amber-600"
+                    : "text-neutral-400 hover:text-neutral-700"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill={isPinned ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+                </svg>
+                {isPinned ? "Unpin" : "Pin"}
               </button>
             )}
             {canDelete && !isDeleted && (
@@ -221,9 +250,9 @@ const ThreadReplyItem = memo(function ThreadReplyItem({
             </button>
           )}
         </div>
-        <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
+        <div className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
           {isDeleted ? msg.content : renderMarkdown(msg.content)}
-        </p>
+        </div>
       </div>
     </div>
   );
@@ -583,6 +612,17 @@ export default function ChatWindow({
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
 
+  // Pinned messages state
+  const [showPinnedPanel, setShowPinnedPanel] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+  const [pinnedLoading, setPinnedLoading] = useState(false);
+
+  // @Mention autocomplete state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionResults, setMentionResults] = useState<Array<{ id: string; username: string; avatar_url: string; display_name: string }>>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [cursorPosition, setCursorPosition] = useState(0)
+
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -734,6 +774,23 @@ export default function ChatWindow({
           messageCache.forEach((_, key) => {
             updateCachedMessage(key, updateDelete);
           });
+        } else if (data.type === "message_pinned" && data.payload) {
+          // Handle pin event from WS
+          const { message_id } = data.payload;
+          const updatePin = (prev: Message[]) =>
+            prev.map((m) => (m.id === message_id ? { ...m, is_pinned: true } : m));
+          setMessages(updatePin);
+          updateCachedMessage(currentChannelRef.current?.id || loopDetails.id, updatePin);
+        } else if (data.type === "message_unpinned" && data.payload) {
+          // Handle unpin event from WS
+          const { message_id } = data.payload;
+          const updateUnpin = (prev: Message[]) =>
+            prev.map((m) => (m.id === message_id ? { ...m, is_pinned: false } : m));
+          setMessages(updateUnpin);
+          updateCachedMessage(currentChannelRef.current?.id || loopDetails.id, updateUnpin);
+        } else if (data.type === "notification" && data.payload) {
+          // Real-time notification - could trigger a toast or bell update
+          console.log("[WS] Notification:", data.payload);
         } else if (data.type === "channel_switched") {
           // Server confirmed channel switch
         }
@@ -906,6 +963,94 @@ export default function ChatWindow({
     }
   }, [deleteTarget, channelId]);
 
+  // Handle pin/unpin toggle
+  const handlePinToggle = useCallback(async (msg: Message) => {
+    if (msg.id.startsWith("temp-")) return;
+    const isPinned = msg.is_pinned ?? false;
+
+    // Optimistic update
+    const updatePin = (prev: Message[]) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, is_pinned: !isPinned } : m));
+    setMessages(updatePin);
+    updateCachedMessage(channelId, updatePin);
+
+    try {
+      if (isPinned) {
+        await api.unpinMessage(msg.id);
+      } else {
+        await api.pinMessage(msg.id);
+      }
+    } catch (err) {
+      console.error("Pin toggle failed:", err);
+      // Revert on error
+      const revertPin = (prev: Message[]) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, is_pinned: isPinned } : m));
+      setMessages(revertPin);
+      updateCachedMessage(channelId, revertPin);
+    }
+  }, [channelId]);
+
+  // Load pinned messages for a channel
+  const loadPinnedMessages = useCallback(async () => {
+    if (!currentChannel) return;
+    setPinnedLoading(true);
+    try {
+      const data = await api.getPinnedMessages(currentChannel.id);
+      setPinnedMessages(data);
+    } catch (err) {
+      console.error("Failed to load pins:", err);
+    } finally {
+      setPinnedLoading(false);
+    }
+  }, [currentChannel]);
+
+  // Toggle pinned panel
+  const handleTogglePinnedPanel = useCallback(() => {
+    setShowPinnedPanel((prev) => {
+      if (!prev) loadPinnedMessages();
+      return !prev;
+    });
+  }, [loadPinnedMessages]);
+
+  // @Mention autocomplete logic
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const pos = e.target.selectionStart || 0;
+    setMessage(value);
+    setCursorPosition(pos);
+
+    // Check if we're in an @mention context
+    const textBeforeCursor = value.slice(0, pos);
+    const mentionMatch = textBeforeCursor.match(/@([a-zA-Z0-9_-]*)$/);
+
+    if (mentionMatch) {
+      const query = mentionMatch[1];
+      setMentionQuery(query);
+      setMentionIndex(0);
+      if (query.length >= 1) {
+        api.searchMembers(loopDetails.name, query).then(setMentionResults).catch(() => setMentionResults([]));
+      } else {
+        setMentionResults([]);
+      }
+    } else {
+      setMentionQuery(null);
+      setMentionResults([]);
+    }
+  }, [loopDetails.name]);
+
+  // Insert @mention
+  const insertMention = useCallback((username: string) => {
+    const textBeforeCursor = message.slice(0, cursorPosition);
+    const mentionMatch = textBeforeCursor.match(/@([a-zA-Z0-9_-]*)$/);
+    if (mentionMatch) {
+      const beforeMention = textBeforeCursor.slice(0, mentionMatch.index);
+      const afterCursor = message.slice(cursorPosition);
+      setMessage(`${beforeMention}@${username} ${afterCursor}`);
+    }
+    setMentionQuery(null);
+    setMentionResults([]);
+  }, [message, cursorPosition]);
+
   // Handle channel creation
   const handleChannelCreated = useCallback((channel: Channel) => {
     setChannelList((prev) => [...prev, channel]);
@@ -945,11 +1090,36 @@ export default function ChatWindow({
 
   // Handle key press
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle @mention keyboard navigation
+    if (mentionQuery !== null && mentionResults.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.min(prev + 1, mentionResults.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(mentionResults[mentionIndex].username);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionQuery(null);
+        setMentionResults([]);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  }, [handleSend]);
+  }, [handleSend, mentionQuery, mentionResults, mentionIndex, insertMention]);
 
   // Handle sharing GitHub summary to chat
   const handleShareToChat = useCallback((content: string) => {
@@ -1210,6 +1380,23 @@ export default function ChatWindow({
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* Pinned messages button */}
+            <motion.button
+              onClick={handleTogglePinnedPanel}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`p-1.5 rounded-lg transition-colors ${
+                showPinnedPanel
+                  ? "bg-amber-100 text-amber-700"
+                  : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-900"
+              }`}
+              title="Pinned messages"
+            >
+              <svg className="w-5 h-5" fill={showPinnedPanel ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+              </svg>
+            </motion.button>
+
             <motion.button
               onClick={() => {
                 setShowGitHub(!showGitHub);
@@ -1268,6 +1455,7 @@ export default function ChatWindow({
                 isOwner={isOwner}
                 onReply={handleViewThread}
                 onDelete={handleDeleteClick}
+                onPin={handlePinToggle}
               />
             ))
           )}
@@ -1276,13 +1464,56 @@ export default function ChatWindow({
 
         {/* Input area */}
         <div className="shrink-0 px-4 py-4 border-t border-neutral-200 bg-neutral-50">
+          {/* @Mention autocomplete dropdown */}
+          <AnimatePresence>
+            {mentionQuery !== null && mentionResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="mb-2 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto"
+              >
+                {mentionResults.map((member, i) => (
+                  <button
+                    key={member.id}
+                    onClick={() => insertMention(member.username)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 transition-colors ${
+                      i === mentionIndex ? "bg-neutral-100" : ""
+                    }`}
+                  >
+                    <div className="w-6 h-6 rounded-full overflow-hidden bg-neutral-200 shrink-0">
+                      {member.avatar_url ? (
+                        <Image
+                          src={member.avatar_url}
+                          alt={member.username}
+                          width={24}
+                          height={24}
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-500">
+                          {member.username[0]?.toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-medium text-neutral-900">{member.username}</span>
+                    {member.display_name && (
+                      <span className="text-neutral-400 text-xs">{member.display_name}</span>
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <textarea
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder={currentChannel ? `Message #${currentChannel.name}` : "Type a message..."}
+                placeholder={currentChannel ? `Message #${currentChannel.name} — type @ to mention` : "Type a message..."}
                 className="w-full px-4 py-3 rounded-xl bg-white border border-neutral-200 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-100 resize-none text-sm min-h-[48px] max-h-32"
                 rows={1}
               />
@@ -1301,6 +1532,89 @@ export default function ChatWindow({
           </div>
         </div>
       </div>
+
+      {/* Pinned messages panel */}
+      <AnimatePresence>
+        {showPinnedPanel && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 340, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="border-l border-neutral-200 bg-white flex flex-col overflow-hidden"
+          >
+            <div className="shrink-0 p-4 border-b border-neutral-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+                </svg>
+                <h3 className="text-sm font-semibold text-neutral-900">Pinned Messages</h3>
+              </div>
+              <button
+                onClick={() => setShowPinnedPanel(false)}
+                className="p-1 hover:bg-neutral-100 rounded transition-colors"
+              >
+                <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {pinnedLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-600 rounded-full animate-spin" />
+                </div>
+              ) : pinnedMessages.length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-8 h-8 mx-auto text-neutral-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+                  </svg>
+                  <p className="text-sm text-neutral-400">No pinned messages yet</p>
+                  <p className="text-xs text-neutral-300 mt-1">Hover over a message and click pin</p>
+                </div>
+              ) : (
+                pinnedMessages.map((msg) => (
+                  <div key={msg.id} className="p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-5 h-5 rounded-full overflow-hidden bg-neutral-200 shrink-0">
+                        {msg.sender_avatar ? (
+                          <Image
+                            src={msg.sender_avatar}
+                            alt={msg.sender_username}
+                            width={20}
+                            height={20}
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-500">
+                            {msg.sender_username?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-medium text-xs text-neutral-700">{msg.sender_username}</span>
+                      <span className="text-[10px] text-neutral-400">
+                        {new Date(msg.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="text-sm text-neutral-600 break-all">
+                      {renderMarkdown(msg.content)}
+                    </div>
+                    {msg.pinned_by_username && (
+                      <div className="text-[10px] text-neutral-400 mt-2 flex items-center gap-1">
+                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+                        </svg>
+                        Pinned by {msg.pinned_by_username}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Thread panel */}
       <AnimatePresence>

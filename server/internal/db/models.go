@@ -37,6 +37,23 @@ type Message struct {
 	IsDeleted  pgtype.Bool
 	DeletedAt  pgtype.Timestamptz
 	CreatedAt  pgtype.Timestamptz
+	IsPinned   pgtype.Bool
+	PinnedBy   pgtype.UUID
+	PinnedAt   pgtype.Timestamptz
+}
+
+type Notification struct {
+	ID             int64
+	UserID         pgtype.UUID
+	Type           string
+	MessageID      pgtype.Int8
+	ProjectID      pgtype.UUID
+	ChannelID      pgtype.UUID
+	ActorID        pgtype.UUID
+	ActorUsername  string
+	ContentPreview pgtype.Text
+	IsRead         pgtype.Bool
+	CreatedAt      pgtype.Timestamptz
 }
 
 type Project struct {

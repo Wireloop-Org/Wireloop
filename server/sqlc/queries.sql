@@ -282,3 +282,82 @@ SELECT COUNT(*) FROM channels WHERE project_id = $1;
 UPDATE channels 
 SET is_default = (id = $2)
 WHERE project_id = $1;
+
+-- ============================================================================
+-- PINNED MESSAGES
+-- ============================================================================
+
+-- name: PinMessage :exec
+UPDATE messages 
+SET is_pinned = TRUE, pinned_by = $2, pinned_at = NOW()
+WHERE id = $1;
+
+-- name: UnpinMessage :exec
+UPDATE messages 
+SET is_pinned = FALSE, pinned_by = NULL, pinned_at = NULL
+WHERE id = $1;
+
+-- name: GetPinnedMessages :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
+    m.parent_id,
+    m.reply_count,
+    m.pinned_at,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar,
+    pinner.username AS pinned_by_username
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+LEFT JOIN users pinner ON m.pinned_by = pinner.id
+WHERE m.channel_id = $1 
+  AND m.is_pinned = TRUE
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
+ORDER BY m.pinned_at DESC;
+
+-- ============================================================================
+-- NOTIFICATIONS
+-- ============================================================================
+
+-- name: CreateNotification :exec
+INSERT INTO notifications (id, user_id, type, message_id, project_id, channel_id, actor_id, actor_username, content_preview)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: GetNotifications :many
+SELECT * FROM notifications
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetUnreadNotificationCount :one
+SELECT COUNT(*) FROM notifications
+WHERE user_id = $1 AND is_read = FALSE;
+
+-- name: MarkNotificationRead :exec
+UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2;
+
+-- name: MarkAllNotificationsRead :exec
+UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE;
+
+-- ============================================================================
+-- MEMBER SEARCH (for @mentions autocomplete)
+-- ============================================================================
+
+-- name: SearchMembersByUsername :many
+SELECT 
+    u.id,
+    u.username,
+    u.avatar_url,
+    u.display_name
+FROM memberships mem
+JOIN users u ON mem.user_id = u.id
+WHERE mem.project_id = $1
+  AND u.username ILIKE $2 || '%'
+ORDER BY u.username ASC
+LIMIT 10;
+
+-- name: GetUserByUsername2 :one
+SELECT id FROM users WHERE username = $1 LIMIT 1;

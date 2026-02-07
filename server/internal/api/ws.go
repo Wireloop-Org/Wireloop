@@ -307,5 +307,7 @@ func (h *Handler) handleWSMessage(client *chat.Client, roomID string, projectUUI
 		if parentID.Valid {
 			h.Queries.IncrementReplyCount(ctx, parentID.Int64)
 		}
+		// Process @mentions and create notifications
+		h.ProcessMentions(ctx, content, client.UserID, client.Username, msgID, projectUUID, channelUUID)
 	}()
 }

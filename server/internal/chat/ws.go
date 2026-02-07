@@ -3,9 +3,11 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -130,4 +132,39 @@ func (h *Hub) GetClient(room string, client *Client) bool {
 		return exists
 	}
 	return false
+}
+
+// NotifyUser sends a message to a specific user across all rooms they're in.
+// Used for targeted notifications (e.g., @mentions, pin alerts).
+func (h *Hub) NotifyUser(userID string, msg any) {
+	h.rooms.Range(func(key, value any) bool {
+		value.(*sync.Map).Range(func(clientKey, _ any) bool {
+			client := clientKey.(*Client)
+			if UUIDToString(client.UserID) == userID {
+				client.Send(msg)
+			}
+			return true
+		})
+		return true
+	})
+
+	// Also publish via Redis so other server instances can deliver
+	if h.redis != nil {
+		payload, err := json.Marshal(map[string]any{
+			"target_user": userID,
+			"message":     msg,
+		})
+		if err == nil {
+			h.redis.Publish(h.ctx, "notify:user", payload)
+		}
+	}
+}
+
+// UUIDToString converts a pgtype.UUID to string
+func UUIDToString(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	b := u.Bytes
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
