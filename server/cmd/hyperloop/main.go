@@ -202,10 +202,28 @@ func main() {
 		protected.GET("/messages/:message_id/replies", Handler.HandleGetThreadReplies)
 		protected.DELETE("/messages/:message_id", Handler.HandleDeleteMessage)
 
+		// Pinned Messages
+		protected.POST("/messages/:message_id/pin", Handler.HandlePinMessage)
+		protected.DELETE("/messages/:message_id/pin", Handler.HandleUnpinMessage)
+		protected.GET("/channels/:id/pins", Handler.HandleGetPinnedMessages)
+
+		// Notifications
+		protected.GET("/notifications", Handler.HandleGetNotifications)
+		protected.GET("/notifications/unread-count", Handler.HandleGetUnreadCount)
+		protected.POST("/notifications/:id/read", Handler.HandleMarkRead)
+		protected.POST("/notifications/read-all", Handler.HandleMarkAllRead)
+
+		// Member search (for @mention autocomplete)
+		protected.GET("/loops/:name/members/search", Handler.HandleSearchMembers)
+
 		// GitHub Context + AI Summarization
 		protected.GET("/loops/:name/github/issues", Handler.HandleGetGitHubIssues)
 		protected.GET("/loops/:name/github/pulls", Handler.HandleGetGitHubPRs)
 		protected.POST("/loops/:name/github/summarize", Handler.HandleGitHubSummarize)
+
+		// PR Review Sync (two-way GitHub ↔ Wireloop)
+		protected.GET("/loops/:name/github/pr/:number/comments", Handler.HandleGetPRComments)
+		protected.POST("/loops/:name/github/pr-comment", Handler.HandlePostPRComment)
 
 		// WebSocket - rate limited to prevent connection spam
 		protected.GET("/ws", middleware.WebSocketRateLimitMiddleware(), Handler.HandleWS)

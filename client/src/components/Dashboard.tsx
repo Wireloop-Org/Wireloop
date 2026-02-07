@@ -1,13 +1,152 @@
 "use client";
 
-import { useEffect, useCallback, memo } from "react";
+import { useEffect, useCallback, memo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { clearToken } from "@/lib/api";
+import { clearToken, api, Notification } from "@/lib/api";
 import { useAuthStore, useLoopsStore } from "@/store";
 import CreateLoopModal from "@/components/CreateLoopModal";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+// ============================================================================
+// NOTIFICATION BELL — polls unread count every 30s, dropdown with notifications
+// Zero external services: uses existing REST API + WebSocket for in-chat delivery
+// ============================================================================
+function NotificationBell() {
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  // Poll unread count
+  useEffect(() => {
+    const fetchCount = () => {
+      api.getUnreadNotificationCount().then((d) => setUnreadCount(d.count)).catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleOpen = useCallback(async () => {
+    setOpen((prev) => {
+      if (!prev) {
+        setLoading(true);
+        api.getNotifications(1, 15).then((data) => {
+          setNotifications(data);
+          setLoading(false);
+        }).catch(() => setLoading(false));
+      }
+      return !prev;
+    });
+  }, []);
+
+  const handleMarkAllRead = useCallback(async () => {
+    await api.markAllNotificationsRead().catch(() => {});
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  }, []);
+
+  const handleClickNotification = useCallback(async (n: Notification) => {
+    if (!n.is_read) {
+      api.markNotificationRead(n.id).catch(() => {});
+      setUnreadCount((c) => Math.max(0, c - 1));
+      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    setOpen(false);
+    // Navigate to the loop if we have project info
+    // For now just close the dropdown — could deep-link to channel/message
+  }, []);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleOpen}
+        className="relative p-2 rounded-xl hover:bg-neutral-100 transition-colors"
+        title="Notifications"
+      >
+        <svg className="w-5 h-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-white rounded-xl border border-neutral-200 shadow-xl z-50 overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
+                <h3 className="text-sm font-semibold text-neutral-900">Notifications</h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <div className="overflow-y-auto max-h-72">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-600 rounded-full animate-spin" />
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-neutral-400">
+                    No notifications yet
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => handleClickNotification(n)}
+                      className={`w-full text-left px-4 py-3 hover:bg-neutral-50 transition-colors border-b border-neutral-50 ${
+                        !n.is_read ? "bg-blue-50/50" : ""
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {!n.is_read && (
+                          <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-neutral-900">
+                            <span className="font-medium">@{n.actor_username}</span>
+                            {n.type === "mention" ? " mentioned you" : ` sent a ${n.type}`}
+                          </p>
+                          {n.content_preview && (
+                            <p className="text-xs text-neutral-500 mt-0.5 truncate">
+                              {n.content_preview}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-neutral-400 mt-1">
+                            {new Date(n.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 // Animation variants
 const containerVariants = {
@@ -195,6 +334,7 @@ export default function Dashboard() {
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3"
                     >
+                        <NotificationBell />
                         <button
                             onClick={() => router.push("/profile")}
                             className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-neutral-100 transition-colors"

@@ -119,6 +119,42 @@ func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (C
 	return i, err
 }
 
+const createNotification = `-- name: CreateNotification :exec
+
+INSERT INTO notifications (id, user_id, type, message_id, project_id, channel_id, actor_id, actor_username, content_preview)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type CreateNotificationParams struct {
+	ID             int64
+	UserID         pgtype.UUID
+	Type           string
+	MessageID      pgtype.Int8
+	ProjectID      pgtype.UUID
+	ChannelID      pgtype.UUID
+	ActorID        pgtype.UUID
+	ActorUsername  string
+	ContentPreview pgtype.Text
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+func (q *Queries) CreateNotification(ctx context.Context, arg CreateNotificationParams) error {
+	_, err := q.db.Exec(ctx, createNotification,
+		arg.ID,
+		arg.UserID,
+		arg.Type,
+		arg.MessageID,
+		arg.ProjectID,
+		arg.ChannelID,
+		arg.ActorID,
+		arg.ActorUsername,
+		arg.ContentPreview,
+	)
+	return err
+}
+
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (github_repo_id, name, owner_id)
 VALUES ($1, $2, $3)
@@ -428,7 +464,7 @@ func (q *Queries) GetLoopMembers(ctx context.Context, projectID pgtype.UUID) ([]
 }
 
 const getMessageByID = `-- name: GetMessageByID :one
-SELECT id, project_id, channel_id, sender_id, content, parent_id, reply_count, is_deleted, deleted_at, created_at FROM messages WHERE id = $1 LIMIT 1
+SELECT id, project_id, channel_id, sender_id, content, parent_id, reply_count, is_deleted, deleted_at, created_at, is_pinned, pinned_by, pinned_at FROM messages WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetMessageByID(ctx context.Context, id int64) (Message, error) {
@@ -445,6 +481,9 @@ func (q *Queries) GetMessageByID(ctx context.Context, id int64) (Message, error)
 		&i.IsDeleted,
 		&i.DeletedAt,
 		&i.CreatedAt,
+		&i.IsPinned,
+		&i.PinnedBy,
+		&i.PinnedAt,
 	)
 	return i, err
 }
@@ -574,6 +613,119 @@ func (q *Queries) GetMessagesByProject(ctx context.Context, arg GetMessagesByPro
 			&i.ReplyCount,
 			&i.SenderUsername,
 			&i.SenderAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNotifications = `-- name: GetNotifications :many
+SELECT id, user_id, type, message_id, project_id, channel_id, actor_id, actor_username, content_preview, is_read, created_at FROM notifications
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetNotificationsParams struct {
+	UserID pgtype.UUID
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetNotifications(ctx context.Context, arg GetNotificationsParams) ([]Notification, error) {
+	rows, err := q.db.Query(ctx, getNotifications, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Notification
+	for rows.Next() {
+		var i Notification
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.MessageID,
+			&i.ProjectID,
+			&i.ChannelID,
+			&i.ActorID,
+			&i.ActorUsername,
+			&i.ContentPreview,
+			&i.IsRead,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPinnedMessages = `-- name: GetPinnedMessages :many
+SELECT 
+    m.id,
+    m.content,
+    m.created_at,
+    m.sender_id,
+    m.channel_id,
+    m.parent_id,
+    m.reply_count,
+    m.pinned_at,
+    u.username AS sender_username,
+    u.avatar_url AS sender_avatar,
+    pinner.username AS pinned_by_username
+FROM messages m
+JOIN users u ON m.sender_id = u.id
+LEFT JOIN users pinner ON m.pinned_by = pinner.id
+WHERE m.channel_id = $1 
+  AND m.is_pinned = TRUE
+  AND (m.is_deleted = FALSE OR m.is_deleted IS NULL)
+ORDER BY m.pinned_at DESC
+`
+
+type GetPinnedMessagesRow struct {
+	ID               int64
+	Content          string
+	CreatedAt        pgtype.Timestamptz
+	SenderID         pgtype.UUID
+	ChannelID        pgtype.UUID
+	ParentID         pgtype.Int8
+	ReplyCount       pgtype.Int4
+	PinnedAt         pgtype.Timestamptz
+	SenderUsername   string
+	SenderAvatar     pgtype.Text
+	PinnedByUsername pgtype.Text
+}
+
+func (q *Queries) GetPinnedMessages(ctx context.Context, channelID pgtype.UUID) ([]GetPinnedMessagesRow, error) {
+	rows, err := q.db.Query(ctx, getPinnedMessages, channelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPinnedMessagesRow
+	for rows.Next() {
+		var i GetPinnedMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.SenderID,
+			&i.ChannelID,
+			&i.ParentID,
+			&i.ReplyCount,
+			&i.PinnedAt,
+			&i.SenderUsername,
+			&i.SenderAvatar,
+			&i.PinnedByUsername,
 		); err != nil {
 			return nil, err
 		}
@@ -803,6 +955,18 @@ func (q *Queries) GetThreadReplies(ctx context.Context, arg GetThreadRepliesPara
 	return items, nil
 }
 
+const getUnreadNotificationCount = `-- name: GetUnreadNotificationCount :one
+SELECT COUNT(*) FROM notifications
+WHERE user_id = $1 AND is_read = FALSE
+`
+
+func (q *Queries) GetUnreadNotificationCount(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getUnreadNotificationCount, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getUserByGithubID = `-- name: GetUserByGithubID :one
 SELECT id, github_id, username, avatar_url, display_name, access_token, profile_completed, created_at, updated_at FROM users WHERE github_id = $1 LIMIT 1
 `
@@ -864,6 +1028,17 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getUserByUsername2 = `-- name: GetUserByUsername2 :one
+SELECT id FROM users WHERE username = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserByUsername2(ctx context.Context, username string) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername2, username)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getUserMemberships = `-- name: GetUserMemberships :many
@@ -982,6 +1157,104 @@ func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (int32, erro
 	return column_1, err
 }
 
+const markAllNotificationsRead = `-- name: MarkAllNotificationsRead :exec
+UPDATE notifications SET is_read = TRUE WHERE user_id = $1 AND is_read = FALSE
+`
+
+func (q *Queries) MarkAllNotificationsRead(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markAllNotificationsRead, userID)
+	return err
+}
+
+const markNotificationRead = `-- name: MarkNotificationRead :exec
+UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2
+`
+
+type MarkNotificationReadParams struct {
+	ID     int64
+	UserID pgtype.UUID
+}
+
+func (q *Queries) MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error {
+	_, err := q.db.Exec(ctx, markNotificationRead, arg.ID, arg.UserID)
+	return err
+}
+
+const pinMessage = `-- name: PinMessage :exec
+
+UPDATE messages 
+SET is_pinned = TRUE, pinned_by = $2, pinned_at = NOW()
+WHERE id = $1
+`
+
+type PinMessageParams struct {
+	ID       int64
+	PinnedBy pgtype.UUID
+}
+
+// ============================================================================
+// PINNED MESSAGES
+// ============================================================================
+func (q *Queries) PinMessage(ctx context.Context, arg PinMessageParams) error {
+	_, err := q.db.Exec(ctx, pinMessage, arg.ID, arg.PinnedBy)
+	return err
+}
+
+const searchMembersByUsername = `-- name: SearchMembersByUsername :many
+
+SELECT 
+    u.id,
+    u.username,
+    u.avatar_url,
+    u.display_name
+FROM memberships mem
+JOIN users u ON mem.user_id = u.id
+WHERE mem.project_id = $1
+  AND u.username ILIKE $2 || '%'
+ORDER BY u.username ASC
+LIMIT 10
+`
+
+type SearchMembersByUsernameParams struct {
+	ProjectID pgtype.UUID
+	Column2   pgtype.Text
+}
+
+type SearchMembersByUsernameRow struct {
+	ID          pgtype.UUID
+	Username    string
+	AvatarUrl   pgtype.Text
+	DisplayName pgtype.Text
+}
+
+// ============================================================================
+// MEMBER SEARCH (for @mentions autocomplete)
+// ============================================================================
+func (q *Queries) SearchMembersByUsername(ctx context.Context, arg SearchMembersByUsernameParams) ([]SearchMembersByUsernameRow, error) {
+	rows, err := q.db.Query(ctx, searchMembersByUsername, arg.ProjectID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchMembersByUsernameRow
+	for rows.Next() {
+		var i SearchMembersByUsernameRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.AvatarUrl,
+			&i.DisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const searchRepos = `-- name: SearchRepos :many
 SELECT id, name
 FROM projects
@@ -1082,6 +1355,17 @@ WHERE id = $1
 
 func (q *Queries) SoftDeleteMessage(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, softDeleteMessage, id)
+	return err
+}
+
+const unpinMessage = `-- name: UnpinMessage :exec
+UPDATE messages 
+SET is_pinned = FALSE, pinned_by = NULL, pinned_at = NULL
+WHERE id = $1
+`
+
+func (q *Queries) UnpinMessage(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, unpinMessage, id)
 	return err
 }
 

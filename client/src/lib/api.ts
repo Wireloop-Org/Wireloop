@@ -190,6 +190,30 @@ export interface Message {
   channel_id?: string;    // Channel this message belongs to
   parent_id?: string;     // For thread replies
   reply_count?: number;   // Number of replies
+  is_pinned?: boolean;    // Whether message is pinned
+  pinned_at?: string;     // When it was pinned
+  pinned_by_username?: string; // Who pinned it
+}
+
+// Notification types
+export interface Notification {
+  id: string;
+  type: string;
+  message_id?: string;
+  project_id?: string;
+  channel_id?: string;
+  actor_username: string;
+  content_preview?: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+// Member search result (for @mention autocomplete)
+export interface MemberSearchResult {
+  id: string;
+  username: string;
+  avatar_url: string;
+  display_name: string;
 }
 
 // Loop details types
@@ -313,6 +337,23 @@ export interface GitHubSummary {
   repo_name: string;
   url: string;
   generated_at: string;
+}
+
+// PR Review Comments — unified type for all GitHub comment types
+export interface PRReviewComment {
+  id: number;
+  type: "review_comment" | "issue_comment" | "review";
+  body: string;
+  path?: string;
+  line?: number;
+  diff_hunk?: string;
+  state?: string; // APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED
+  in_reply_to_id?: number;
+  created_at: string;
+  html_url: string;
+  username: string;
+  avatar_url: string;
+  source: "github" | "wireloop";
 }
 export interface InitData {
   profile: {
@@ -619,5 +660,69 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ type: itemType, number }),
       }
+    ),
+
+  // PR Review Sync (two-way GitHub ↔ Wireloop)
+  getPRComments: (loopName: string, prNumber: number) =>
+    apiRequest<{ comments: PRReviewComment[]; pr_number: number; repo_name: string }>(
+      `/api/loops/${encodeURIComponent(loopName)}/github/pr/${prNumber}/comments`
+    ),
+
+  postPRComment: (loopName: string, prNumber: number, body: string, inReplyTo?: number) =>
+    apiRequest<{ success: boolean; id: number; html_url: string }>(
+      `/api/loops/${encodeURIComponent(loopName)}/github/pr-comment`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          pr_number: prNumber,
+          body,
+          ...(inReplyTo ? { in_reply_to: inReplyTo } : {}),
+        }),
+      }
+    ),
+
+  // ============================================================================
+  // PINNED MESSAGES
+  // ============================================================================
+  pinMessage: (messageId: string) =>
+    apiRequest<{ success: boolean }>(`/api/messages/${messageId}/pin`, {
+      method: "POST",
+    }),
+
+  unpinMessage: (messageId: string) =>
+    apiRequest<{ success: boolean }>(`/api/messages/${messageId}/pin`, {
+      method: "DELETE",
+    }),
+
+  getPinnedMessages: (channelId: string) =>
+    apiRequest<Message[]>(`/api/channels/${channelId}/pins`),
+
+  // ============================================================================
+  // NOTIFICATIONS
+  // ============================================================================
+  getNotifications: (page = 1, perPage = 20) =>
+    apiRequest<Notification[]>(
+      `/api/notifications?page=${page}&per_page=${perPage}`
+    ),
+
+  getUnreadNotificationCount: () =>
+    apiRequest<{ count: number }>("/api/notifications/unread-count"),
+
+  markNotificationRead: (notificationId: string) =>
+    apiRequest<{ success: boolean }>(`/api/notifications/${notificationId}/read`, {
+      method: "POST",
+    }),
+
+  markAllNotificationsRead: () =>
+    apiRequest<{ success: boolean }>("/api/notifications/read-all", {
+      method: "POST",
+    }),
+
+  // ============================================================================
+  // MEMBER SEARCH (for @mention autocomplete)
+  // ============================================================================
+  searchMembers: (loopName: string, query: string) =>
+    apiRequest<MemberSearchResult[]>(
+      `/api/loops/${encodeURIComponent(loopName)}/members/search?q=${encodeURIComponent(query)}`
     ),
 };
