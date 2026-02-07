@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-
 func (h *Handler) HandleGitHubCallback(c *gin.Context) {
 	code := c.Query("code")
 	if code == "" {
@@ -26,7 +25,11 @@ func (h *Handler) HandleGitHubCallback(c *gin.Context) {
 		return
 	}
 
-	ghUser, _ := auth.GetGitHubProfile(token)
+	ghUser, err := auth.GetGitHubProfile(token)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch GitHub profile"})
+		return
+	}
 
 	user, err := h.Queries.UpsertUser(c, db.UpsertUserParams{
 		GithubID:    ghUser.ID,
@@ -49,25 +52,25 @@ func (h *Handler) HandleGitHubCallback(c *gin.Context) {
 }
 
 func AuthMiddleware(secret string) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        h := c.GetHeader("Authorization")
-        if !strings.HasPrefix(h, "Bearer ") {
-            c.AbortWithStatus(http.StatusUnauthorized)
-            return
-        }
+	return func(c *gin.Context) {
+		h := c.GetHeader("Authorization")
+		if !strings.HasPrefix(h, "Bearer ") {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 
-        tokenStr := strings.TrimPrefix(h, "Bearer ")
+		tokenStr := strings.TrimPrefix(h, "Bearer ")
 
-        t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-            return []byte(secret), nil
-        })
-        if err != nil || !t.Valid {
-            c.AbortWithStatus(http.StatusUnauthorized)
-            return
-        }
+		t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
+			return []byte(secret), nil
+		})
+		if err != nil || !t.Valid {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 
-        claims := t.Claims.(jwt.MapClaims)
-        c.Set("user_id", claims["user_id"])
-        c.Next()
-    }
+		claims := t.Claims.(jwt.MapClaims)
+		c.Set("user_id", claims["user_id"])
+		c.Next()
+	}
 }

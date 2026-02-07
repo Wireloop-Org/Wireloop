@@ -12,6 +12,7 @@ import {
   VerifyAccessResponse,
 } from "@/lib/api";
 import GitHubPanel from "./GitHubPanel";
+import { renderMarkdown } from "@/lib/markdown";
 
 // ============================================================================
 // TYPES
@@ -118,7 +119,7 @@ const MessageItem = memo(function MessageItem({
           </span>
         </div>
         <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
-          {msg.content}
+          {isDeleted ? msg.content : renderMarkdown(msg.content)}
         </p>
         
         {/* Reply count & action buttons */}
@@ -221,7 +222,7 @@ const ThreadReplyItem = memo(function ThreadReplyItem({
           )}
         </div>
         <p className={`text-sm mt-0.5 break-all ${isDeleted ? "text-neutral-400 italic" : "text-neutral-700"}`}>
-          {msg.content}
+          {isDeleted ? msg.content : renderMarkdown(msg.content)}
         </p>
       </div>
     </div>
@@ -332,7 +333,7 @@ function ThreadPanel({
           </div>
           <span className="font-medium text-sm text-neutral-900">{parentMessage.sender_username}</span>
         </div>
-        <p className="text-sm text-neutral-700">{parentMessage.content}</p>
+        <p className="text-sm text-neutral-700">{renderMarkdown(parentMessage.content)}</p>
       </div>
 
       {/* Replies */}

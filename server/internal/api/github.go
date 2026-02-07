@@ -624,7 +624,7 @@ Be concise. No unnecessary jargon.`
 
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-2.5-flash"
 	}
 
 	reqBody := geminiRequest{
@@ -655,13 +655,13 @@ Be concise. No unnecessary jargon.`
 
 	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(httpReq)
 	if err != nil {
-		return "", fmt.Errorf("Gemini API request failed: %v", err)
+		return "", fmt.Errorf("gemini API request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Gemini API error %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("gemini API error %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var aiResp geminiResponse

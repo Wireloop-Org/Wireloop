@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"wireloop/internal/api"
@@ -214,10 +216,31 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Wireloop API starting on port %s", port)
-	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+	// Graceful shutdown
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: r.Handler(),
 	}
+
+	go func() {
+		log.Printf("Wireloop API starting on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed to start: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+	log.Println("Server exited gracefully")
 }
 
 // Simple test handler to verify DB access

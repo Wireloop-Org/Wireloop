@@ -10,14 +10,31 @@ import (
 )
 
 var (
-	mu    sync.RWMutex
-	cache = make(map[string]entry)
-	ttl   = int64(30)
+	mu          sync.RWMutex
+	searchCache = make(map[string]entry)
+	ttl         = int64(30)
 )
 
 type entry struct {
 	v   any
 	exp int64
+}
+
+func init() {
+	// Periodic cache cleanup to prevent unbounded memory growth
+	go func() {
+		for {
+			time.Sleep(5 * time.Minute)
+			now := time.Now().Unix()
+			mu.Lock()
+			for k, e := range searchCache {
+				if now >= e.exp {
+					delete(searchCache, k)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
 }
 
 func (h *Handler) HandleSearchQuery(c *gin.Context) {
@@ -29,7 +46,7 @@ func (h *Handler) HandleSearchQuery(c *gin.Context) {
 
 	key := "repo:" + raw
 	mu.RLock()
-	if e, ok := cache[key]; ok && time.Now().Unix() < e.exp {
+	if e, ok := searchCache[key]; ok && time.Now().Unix() < e.exp {
 		mu.RUnlock()
 		c.JSON(200, e.v)
 		return
@@ -48,7 +65,7 @@ func (h *Handler) HandleSearchQuery(c *gin.Context) {
 	}
 
 	mu.Lock()
-	cache[key] = entry{v: repos, exp: time.Now().Unix() + ttl}
+	searchCache[key] = entry{v: repos, exp: time.Now().Unix() + ttl}
 	mu.Unlock()
 
 	c.JSON(200, repos)

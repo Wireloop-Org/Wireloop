@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 	utils "wireloop/internal"
@@ -17,7 +19,23 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // Allow no-origin (e.g., native clients)
+		}
+		allowed := []string{"http://localhost:3000", "https://localhost:3000"}
+		if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
+			allowed = append(allowed, frontendURL)
+		}
+		for _, a := range allowed {
+			if origin == a {
+				return true
+			}
+		}
+		log.Printf("[WS] rejected origin: %s", origin)
+		return false
+	},
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
 }
@@ -152,14 +170,23 @@ func (h *Handler) HandleWS(c *gin.Context) {
 
 	// Start ping ticker for connection health monitoring
 	ticker := time.NewTicker(pingPeriod)
-	defer ticker.Stop()
+	done := make(chan struct{})
+	defer func() {
+		ticker.Stop()
+		close(done)
+	}()
 
 	// Ping goroutine - keeps connection alive
 	go func() {
-		for range ticker.C {
-			conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+		for {
+			select {
+			case <-done:
 				return
+			case <-ticker.C:
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					return
+				}
 			}
 		}
 	}()
