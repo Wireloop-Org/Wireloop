@@ -21,6 +21,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -51,8 +52,11 @@ func main() {
 		log.Fatalf("Unable to parse database URL: %v\n", err)
 	}
 
-	// SOTA connection pool settings for performance
-	maxConns := 25 // Increased default for better concurrency
+	// Use simple protocol — disables prepared statements for PgBouncer/Supabase pooler
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	// Connection pool settings (conservative for Supabase free-tier)
+	maxConns := 10
 	if maxConnsStr := os.Getenv("MAX_DB_CONN"); maxConnsStr != "" {
 		if parsedMaxConns, err := strconv.Atoi(maxConnsStr); err == nil {
 			maxConns = parsedMaxConns
@@ -61,7 +65,7 @@ func main() {
 		}
 	}
 	config.MaxConns = int32(maxConns)
-	config.MinConns = int32(maxConns / 4)       // Keep warm connections
+	config.MinConns = 2                         // Minimal warm connections
 	config.MaxConnLifetime = 30 * time.Minute   // Refresh connections periodically
 	config.MaxConnIdleTime = 5 * time.Minute    // Close idle connections
 	config.HealthCheckPeriod = 30 * time.Second // Check connection health
@@ -72,8 +76,20 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("Database is unreachable: %v\n", err)
+	// Retry ping — Supabase pooler may need time to free slots during deploys
+	var pingErr error
+	for i := 0; i < 5; i++ {
+		retryCtx, retryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		pingErr = pool.Ping(retryCtx)
+		retryCancel()
+		if pingErr == nil {
+			break
+		}
+		log.Printf("DB ping attempt %d/5 failed: %v — retrying in 3s...", i+1, pingErr)
+		time.Sleep(3 * time.Second)
+	}
+	if pingErr != nil {
+		log.Fatalf("Database is unreachable after 5 attempts: %v\n", pingErr)
 	}
 	log.Println("Successfully connected to PostgreSQL (Supabase/RDS)")
 
