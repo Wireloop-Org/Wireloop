@@ -50,10 +50,35 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 		ProjectID: project.ID,
 	}); err == nil {
 		c.JSON(200, gin.H{
-			"is_member":   true,
-			"can_join":    true,
-			"message":     "You are already a member of this loop",
-			"results":     []gatekeeper.VerificationResult{},
+			"is_member": true,
+			"can_join":  true,
+			"message":   "You are already a member of this loop",
+			"results":   []gatekeeper.VerificationResult{},
+		})
+		return
+	}
+
+	// Get the repo owner for GitHub API calls
+	owner, err := h.Queries.GetUserByID(c, project.OwnerID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to get owner info"})
+		return
+	}
+
+	// Check if user is a GitHub collaborator — bypass all rules
+	isCollab, err := gate.CheckCollaborator(c, user.AccessToken, owner.Username, project.Name, user.Username)
+	if err != nil {
+		// Non-fatal: if we can't check, fall through to rules
+		isCollab = false
+	}
+
+	if isCollab {
+		c.JSON(200, gin.H{
+			"is_member":       false,
+			"can_join":        true,
+			"is_collaborator": true,
+			"message":         "You're a collaborator on this repo — welcome in!",
+			"results":         []gatekeeper.VerificationResult{},
 		})
 		return
 	}
@@ -68,19 +93,11 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 	// If no rules, anyone can join
 	if len(rules) == 0 {
 		c.JSON(200, gin.H{
-			"is_member":   false,
-			"can_join":    true,
-			"message":     "This loop is open to everyone",
-			"results":     []gatekeeper.VerificationResult{},
+			"is_member": false,
+			"can_join":  true,
+			"message":   "This loop is open to everyone",
+			"results":   []gatekeeper.VerificationResult{},
 		})
-		return
-	}
-
-	// Parse repo owner/name from project (we need to store this or derive it)
-	// For now, assume the loop name is the repo name and get owner from the owner
-	owner, err := h.Queries.GetUserByID(c, project.OwnerID)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get owner info"})
 		return
 	}
 
@@ -94,7 +111,7 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 		}
 	}
 
-	// Verify access
+	// Verify access against rules
 	results, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "verification failed: " + err.Error()})
@@ -154,39 +171,44 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 		return
 	}
 
-	// Get rules
-	rules, err := h.Queries.GetRulesByProject(c, project.ID)
+	// Get repo owner for GitHub API calls
+	owner, err := h.Queries.GetUserByID(c, project.OwnerID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get rules"})
+		c.JSON(500, gin.H{"error": "failed to get owner"})
 		return
 	}
 
-	// Verify if there are rules
-	if len(rules) > 0 {
-		owner, err := h.Queries.GetUserByID(c, project.OwnerID)
+	// Check if user is a GitHub collaborator — bypass all rules
+	isCollab, _ := gate.CheckCollaborator(c, user.AccessToken, owner.Username, project.Name, user.Username)
+
+	if !isCollab {
+		// Not a collaborator — enforce rules
+		rules, err := h.Queries.GetRulesByProject(c, project.ID)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "failed to get owner"})
+			c.JSON(500, gin.H{"error": "failed to get rules"})
 			return
 		}
 
-		gkRules := make([]gatekeeper.Rule, len(rules))
-		for i, r := range rules {
-			threshold, _ := gatekeeper.ParseThreshold(r.Threshold)
-			gkRules[i] = gatekeeper.Rule{
-				CriteriaType: gatekeeper.CriteriaType(r.CriteriaType),
-				Threshold:    threshold,
+		if len(rules) > 0 {
+			gkRules := make([]gatekeeper.Rule, len(rules))
+			for i, r := range rules {
+				threshold, _ := gatekeeper.ParseThreshold(r.Threshold)
+				gkRules[i] = gatekeeper.Rule{
+					CriteriaType: gatekeeper.CriteriaType(r.CriteriaType),
+					Threshold:    threshold,
+				}
 			}
-		}
 
-		_, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "verification failed"})
-			return
-		}
+			_, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "verification failed"})
+				return
+			}
 
-		if !passed {
-			c.JSON(403, gin.H{"error": "contribution requirements not met"})
-			return
+			if !passed {
+				c.JSON(403, gin.H{"error": "contribution requirements not met"})
+				return
+			}
 		}
 	}
 
@@ -213,4 +235,3 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 		"loop":    loopName,
 	})
 }
-
