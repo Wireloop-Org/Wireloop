@@ -278,3 +278,33 @@ func (g *Gatekeeper) getStarCount(ctx context.Context, accessToken, owner, repo 
 func ParseThreshold(s string) (int, error) {
 	return strconv.Atoi(s)
 }
+
+// CheckCollaborator checks if a user is a collaborator (has write/admin access) on a GitHub repo.
+// GitHub returns 204 if collaborator, 404 if not, 403 if no permission to check.
+func (g *Gatekeeper) CheckCollaborator(ctx context.Context, accessToken, owner, repo, username string) (bool, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/collaborators/%s", owner, repo, username)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := g.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	// 204 = is a collaborator, 404 = not a collaborator, 403 = can't check (private repo, no admin access)
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		return true, nil
+	case http.StatusNotFound, http.StatusForbidden:
+		return false, nil
+	default:
+		return false, fmt.Errorf("GitHub collaborator check returned %d", resp.StatusCode)
+	}
+}
