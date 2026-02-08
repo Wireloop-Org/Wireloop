@@ -50,6 +50,52 @@ func New() *Gatekeeper {
 	}
 }
 
+// RepoInfo holds the resolved GitHub repo owner and name
+type RepoInfo struct {
+	Owner string
+	Name  string
+}
+
+// ResolveRepoByID fetches the actual owner/name of a GitHub repo by its numeric ID.
+// This is critical because the Wireloop loop name and owner may differ from the GitHub repo.
+func (g *Gatekeeper) ResolveRepoByID(ctx context.Context, accessToken string, repoID int64) (*RepoInfo, error) {
+	url := fmt.Sprintf("https://api.github.com/repositories/%d", repoID)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := g.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned %d for repo ID %d", resp.StatusCode, repoID)
+	}
+
+	var repoData struct {
+		Owner struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&repoData); err != nil {
+		return nil, err
+	}
+
+	return &RepoInfo{
+		Owner: repoData.Owner.Login,
+		Name:  repoData.Name,
+	}, nil
+}
+
 // VerifyAccess checks if a user meets all rules for a repository
 func (g *Gatekeeper) VerifyAccess(ctx context.Context, accessToken, repoOwner, repoName, username string, rules []Rule) ([]VerificationResult, bool, error) {
 	results := make([]VerificationResult, 0, len(rules))

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"strings"
 	utils "wireloop/internal"
 	"wireloop/internal/db"
@@ -58,17 +59,24 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 		return
 	}
 
-	// Get the repo owner for GitHub API calls
-	owner, err := h.Queries.GetUserByID(c, project.OwnerID)
+	// Resolve the REAL GitHub repo owner/name from the stored github_repo_id
+	repoInfo, err := gate.ResolveRepoByID(c, user.AccessToken, project.GithubRepoID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get owner info"})
+		log.Printf("[verify-access] Failed to resolve repo ID %d: %v", project.GithubRepoID, err)
+		// Can't resolve the repo — return graceful failure
+		c.JSON(200, gin.H{
+			"is_member": false,
+			"can_join":  false,
+			"message":   "Could not resolve the GitHub repository. It may be private or deleted.",
+			"results":   []gatekeeper.VerificationResult{},
+		})
 		return
 	}
 
 	// Check if user is a GitHub collaborator — bypass all rules
-	isCollab, err := gate.CheckCollaborator(c, user.AccessToken, owner.Username, project.Name, user.Username)
+	isCollab, err := gate.CheckCollaborator(c, user.AccessToken, repoInfo.Owner, repoInfo.Name, user.Username)
 	if err != nil {
-		// Non-fatal: if we can't check, fall through to rules
+		log.Printf("[verify-access] Collaborator check failed for %s on %s/%s: %v", user.Username, repoInfo.Owner, repoInfo.Name, err)
 		isCollab = false
 	}
 
@@ -111,10 +119,9 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 		}
 	}
 
-	// Verify access against rules (non-fatal — individual rule failures are handled gracefully)
-	results, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
+	// Verify access against rules using the REAL repo coordinates
+	results, passed, err := gate.VerifyAccess(c, user.AccessToken, repoInfo.Owner, repoInfo.Name, user.Username, gkRules)
 	if err != nil {
-		// Even if verification itself fails, return a 200 with can_join=false so the UI can show something useful
 		c.JSON(200, gin.H{
 			"is_member": false,
 			"can_join":  false,
@@ -177,15 +184,18 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 		return
 	}
 
-	// Get repo owner for GitHub API calls
-	owner, err := h.Queries.GetUserByID(c, project.OwnerID)
+	// Resolve the REAL GitHub repo owner/name
+	repoInfo, err := gate.ResolveRepoByID(c, user.AccessToken, project.GithubRepoID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to get owner"})
-		return
+		log.Printf("[join] Failed to resolve repo ID %d: %v", project.GithubRepoID, err)
+		// Can't resolve repo — let them try to join anyway (skip rule checks)
 	}
 
 	// Check if user is a GitHub collaborator — bypass all rules
-	isCollab, _ := gate.CheckCollaborator(c, user.AccessToken, owner.Username, project.Name, user.Username)
+	isCollab := false
+	if repoInfo != nil {
+		isCollab, _ = gate.CheckCollaborator(c, user.AccessToken, repoInfo.Owner, repoInfo.Name, user.Username)
+	}
 
 	if !isCollab {
 		// Not a collaborator — enforce rules
@@ -195,7 +205,7 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 			return
 		}
 
-		if len(rules) > 0 {
+		if len(rules) > 0 && repoInfo != nil {
 			gkRules := make([]gatekeeper.Rule, len(rules))
 			for i, r := range rules {
 				threshold, _ := gatekeeper.ParseThreshold(r.Threshold)
@@ -205,7 +215,7 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 				}
 			}
 
-			_, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
+			_, passed, err := gate.VerifyAccess(c, user.AccessToken, repoInfo.Owner, repoInfo.Name, user.Username, gkRules)
 			if err != nil {
 				c.JSON(500, gin.H{"error": "verification failed"})
 				return
@@ -225,7 +235,6 @@ func (h *Handler) HandleJoinLoop(c *gin.Context) {
 		Role:      pgtype.Text{String: "contributor", Valid: true},
 	}); err != nil {
 		if strings.Contains(err.Error(), "duplicate") {
-			// Already a member - return success anyway
 			c.JSON(200, gin.H{
 				"message": "You are already a member!",
 				"loop":    loopName,
