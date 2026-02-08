@@ -9,8 +9,13 @@ function AuthSuccessContent() {
 
   useEffect(() => {
     const token = searchParams.get("token");
+    const error = searchParams.get("error");
     
-    if (token) {
+    if (error) {
+      // OAuth failed — redirect to landing with error message
+      console.error("[auth] OAuth error:", error);
+      router.push("/?error=" + encodeURIComponent(error));
+    } else if (token) {
       localStorage.setItem("wireloop_token", token);
       router.push("/");
     } else {

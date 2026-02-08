@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"wireloop/internal/api"
+	"wireloop/internal/auth"
 	"wireloop/internal/chat"
 	"wireloop/internal/db"
 	"wireloop/internal/middleware"
@@ -114,6 +117,9 @@ func main() {
 	if frontendURL != "" {
 		allowedOrigins = append(allowedOrigins, frontendURL)
 	}
+	if obsURL := os.Getenv("OBS_FRONTEND_URL"); obsURL != "" {
+		allowedOrigins = append(allowedOrigins, obsURL)
+	}
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
@@ -143,10 +149,39 @@ func main() {
 		clientID := os.Getenv("GITHUB_CLIENT_ID")
 		if clientID == "" {
 			log.Println("WARNING: GITHUB_CLIENT_ID is empty!")
-		} else {
-			log.Printf("Using GitHub Client ID: %s...", clientID[:10])
+			c.JSON(500, gin.H{"error": "OAuth not configured"})
+			return
 		}
-		redirectURL := "https://github.com/login/oauth/authorize?client_id=" + clientID + "&scope=user:email"
+
+		// Build callback URL — auto-detect from request if BACKEND_URL not set
+		backendURL := os.Getenv("BACKEND_URL")
+		if backendURL == "" {
+			// Auto-detect from the incoming request
+			scheme := "https"
+			if c.Request.TLS == nil && c.GetHeader("X-Forwarded-Proto") == "" {
+				scheme = "http"
+			} else if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
+				scheme = proto
+			}
+			host := c.GetHeader("X-Forwarded-Host")
+			if host == "" {
+				host = c.Request.Host
+			}
+			backendURL = scheme + "://" + host
+			log.Printf("[auth] BACKEND_URL not set, auto-detected: %s", backendURL)
+		}
+		callbackURL := backendURL + "/api/auth/callback"
+
+		// Generate CSRF state token
+		state := auth.GenerateState()
+		log.Printf("[auth] OAuth flow started, clientID=%s..., callback=%s, state=%s", clientID[:min(10, len(clientID))], callbackURL, state[:8])
+
+		redirectURL := fmt.Sprintf(
+			"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email&state=%s",
+			clientID,
+			url.QueryEscape(callbackURL),
+			state,
+		)
 		c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 	})
 
@@ -227,6 +262,17 @@ func main() {
 
 		// WebSocket - rate limited to prevent connection spam
 		protected.GET("/ws", middleware.WebSocketRateLimitMiddleware(), Handler.HandleWS)
+	}
+
+	// ===== Admin / Observability routes (basic auth protected) =====
+	admin := r.Group("/api/admin")
+	admin.Use(api.AdminAuthMiddleware())
+	{
+		admin.GET("/stats", Handler.HandleObsStats)
+		admin.GET("/users", Handler.HandleObsUsers)
+		admin.GET("/errors", Handler.HandleObsErrors)
+		admin.GET("/messages-timeline", Handler.HandleObsTimeline)
+		admin.GET("/active-loops", Handler.HandleObsLoops)
 	}
 
 	port := os.Getenv("PORT")
