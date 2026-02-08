@@ -247,7 +247,11 @@
                 document.getElementById('app').innerHTML = '<div class="error-msg">Invalid credentials. Refresh to retry.</div>';
                 throw new Error('Unauthorized');
             }
-            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            if (!res.ok) {
+                const body = await res.text().catch(() => '');
+                console.error(`[obs] ${endpoint} failed: ${res.status}`, body);
+                return null; // Return null instead of throwing — let other endpoints succeed
+            }
             return res.json();
         }
 
@@ -279,41 +283,48 @@
                 document.getElementById('statusText').textContent = 'Connected';
                 document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
-                const pool = stats.db_pool || {};
+                // Fallback for any endpoint that returned null
+                const s = stats || {};
+                const u = users || [];
+                const e = errors || {};
+                const t = timeline || [];
+                const l = loops || [];
+
+                const pool = s.db_pool || {};
                 const maxConns = pool.max_conns || 1;
                 const activePercent = ((pool.acquired_conns || 0) / maxConns * 100).toFixed(0);
                 const idlePercent = ((pool.idle_conns || 0) / maxConns * 100).toFixed(0);
 
                 // Build chart
-                const maxMsg = Math.max(...timeline.map(t => t.count), 1);
-                const chartBars = timeline.map(t => {
-                    const h = Math.max((t.count / maxMsg) * 100, 2);
-                    return `<div class="chart-bar" style="height:${h}%"><div class="tooltip">${t.day}: ${t.count} msgs</div></div>`;
+                const maxMsg = Math.max(...t.map(d => d.count), 1);
+                const chartBars = t.map(d => {
+                    const h = Math.max((d.count / maxMsg) * 100, 2);
+                    return `<div class="chart-bar" style="height:${h}%"><div class="tooltip">${d.day}: ${d.count} msgs</div></div>`;
                 }).join('');
-                const chartLabels = timeline.length > 0
-                    ? `<span>${timeline[0].day}</span><span>${timeline[timeline.length - 1].day}</span>`
+                const chartLabels = t.length > 0
+                    ? `<span>${t[0].day}</span><span>${t[t.length - 1].day}</span>`
                     : '<span>No data</span>';
 
                 // Build users table
-                const userRows = users.slice(0, 25).map(u => `
+                const userRows = u.slice(0, 25).map(usr => `
                     <tr>
-                        <td>${u.avatar_url ? `<img class="avatar" src="${u.avatar_url}" alt="">` : ''}${u.username}</td>
-                        <td>${u.loop_count}</td>
-                        <td>${u.message_count}</td>
-                        <td><span class="badge ${u.profile_completed ? 'green' : 'orange'}">${u.profile_completed ? 'Complete' : 'Incomplete'}</span></td>
-                        <td>${timeAgo(u.created_at)}</td>
+                        <td>${usr.avatar_url ? `<img class="avatar" src="${usr.avatar_url}" alt="">` : ''}${usr.username}</td>
+                        <td>${usr.loop_count}</td>
+                        <td>${usr.message_count}</td>
+                        <td><span class="badge ${usr.profile_completed ? 'green' : 'orange'}">${usr.profile_completed ? 'Complete' : 'Incomplete'}</span></td>
+                        <td>${timeAgo(usr.created_at)}</td>
                     </tr>
                 `).join('');
 
                 // Build loops table
-                const loopRows = loops.map(l => `
+                const loopRows = l.map(lp => `
                     <tr>
-                        <td><strong>${l.display_name || l.name}</strong></td>
-                        <td>${l.member_count}</td>
-                        <td>${l.channel_count}</td>
-                        <td>${l.total_messages}</td>
-                        <td><span class="badge ${l.messages_today > 0 ? 'green' : ''}">${l.messages_today}</span></td>
-                        <td>${timeAgo(l.created_at)}</td>
+                        <td><strong>${lp.name}</strong></td>
+                        <td>${lp.member_count}</td>
+                        <td>${lp.channel_count}</td>
+                        <td>${lp.total_messages}</td>
+                        <td><span class="badge ${lp.messages_today > 0 ? 'green' : ''}">${lp.messages_today}</span></td>
+                        <td>${timeAgo(lp.created_at)}</td>
                     </tr>
                 `).join('');
 
@@ -322,31 +333,31 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="label">Total Users</div>
-                            <div class="value accent">${stats.total_users}</div>
-                            <div class="sub">+${stats.users_today} today · +${stats.users_this_week} this week</div>
+                            <div class="value accent">${s.total_users ?? '—'}</div>
+                            <div class="sub">+${s.users_today ?? 0} today · +${s.users_this_week ?? 0} this week</div>
                         </div>
                         <div class="stat-card">
                             <div class="label">Total Messages</div>
-                            <div class="value green">${stats.total_messages}</div>
-                            <div class="sub">+${stats.messages_today} today</div>
+                            <div class="value green">${s.total_messages ?? '—'}</div>
+                            <div class="sub">+${s.messages_today ?? 0} today</div>
                         </div>
                         <div class="stat-card">
                             <div class="label">Loops</div>
-                            <div class="value purple">${stats.total_loops}</div>
-                            <div class="sub">${stats.total_channels} channels</div>
+                            <div class="value purple">${s.total_loops ?? '—'}</div>
+                            <div class="sub">${s.total_channels ?? 0} channels</div>
                         </div>
                         <div class="stat-card">
                             <div class="label">Memberships</div>
-                            <div class="value">${stats.total_memberships}</div>
+                            <div class="value">${s.total_memberships ?? '—'}</div>
                         </div>
                         <div class="stat-card">
                             <div class="label">Notifications</div>
-                            <div class="value orange">${stats.total_notifications}</div>
-                            <div class="sub">${stats.unread_notifications} unread</div>
+                            <div class="value orange">${s.total_notifications ?? '—'}</div>
+                            <div class="sub">${s.unread_notifications ?? 0} unread</div>
                         </div>
                         <div class="stat-card">
                             <div class="label">Pinned Messages</div>
-                            <div class="value">${stats.pinned_messages}</div>
+                            <div class="value">${s.pinned_messages ?? '—'}</div>
                         </div>
                     </div>
 
@@ -383,19 +394,19 @@
                         <div class="section-title">Anomalies</div>
                         <div class="error-grid">
                             <div class="error-card">
-                                <div class="count ${errSeverity(errors.incomplete_profiles)}">${errors.incomplete_profiles}</div>
+                                <div class="count ${errSeverity(e.incomplete_profiles ?? 0)}">${e.incomplete_profiles ?? '—'}</div>
                                 <div class="desc">Incomplete Profiles</div>
                             </div>
                             <div class="error-card">
-                                <div class="count ${errSeverity(errors.users_no_loops)}">${errors.users_no_loops}</div>
+                                <div class="count ${errSeverity(e.users_no_loops ?? 0)}">${e.users_no_loops ?? '—'}</div>
                                 <div class="desc">Users Without Loops</div>
                             </div>
                             <div class="error-card">
-                                <div class="count ${errSeverity(errors.orphaned_messages)}">${errors.orphaned_messages}</div>
+                                <div class="count ${errSeverity(e.orphaned_messages ?? 0)}">${e.orphaned_messages ?? '—'}</div>
                                 <div class="desc">Orphaned Messages</div>
                             </div>
                             <div class="error-card">
-                                <div class="count ${errSeverity(errors.deleted_messages)}">${errors.deleted_messages}</div>
+                                <div class="count ${errSeverity(e.deleted_messages ?? 0)}">${e.deleted_messages ?? '—'}</div>
                                 <div class="desc">Deleted Messages</div>
                             </div>
                         </div>
@@ -403,7 +414,7 @@
 
                     <!-- Users Table -->
                     <div class="section">
-                        <div class="section-title">Recent Users (${users.length})</div>
+                        <div class="section-title">Recent Users (${u.length})</div>
                         <table class="data-table">
                             <thead>
                                 <tr><th>User</th><th>Loops</th><th>Messages</th><th>Profile</th><th>Joined</th></tr>
