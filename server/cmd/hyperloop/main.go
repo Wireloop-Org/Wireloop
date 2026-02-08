@@ -52,8 +52,8 @@ func main() {
 		log.Fatalf("Unable to parse database URL: %v\n", err)
 	}
 
-	// Use simple protocol — required for Supabase transaction-mode pooler (PgBouncer)
-	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
+	// Use simple protocol — disables prepared statements for PgBouncer/Supabase pooler
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	// Connection pool settings (conservative for Supabase free-tier)
 	maxConns := 10
