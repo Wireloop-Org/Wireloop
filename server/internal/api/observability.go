@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -56,24 +57,28 @@ func (h *Handler) HandleObsStats(c *gin.Context) {
 	ctx := c.Request.Context()
 	stats := gin.H{}
 
-	var totalUsers, usersToday, usersWeek int
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&usersToday)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '7 days'").Scan(&usersWeek)
+	scanCount := func(query string) int {
+		var n int
+		if err := h.Pool.QueryRow(ctx, query).Scan(&n); err != nil {
+			log.Printf("[obs] stats query failed: %s — %v", query, err)
+		}
+		return n
+	}
 
-	var totalMessages, messagesToday int
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages").Scan(&totalMessages)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&messagesToday)
+	totalUsers := scanCount("SELECT COUNT(*) FROM users")
+	usersToday := scanCount("SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'")
+	usersWeek := scanCount("SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '7 days'")
 
-	var totalProjects, totalMemberships, totalChannels int
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM projects").Scan(&totalProjects)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM memberships").Scan(&totalMemberships)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM channels").Scan(&totalChannels)
+	totalMessages := scanCount("SELECT COUNT(*) FROM messages")
+	messagesToday := scanCount("SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL '24 hours'")
 
-	var totalNotifs, unreadNotifs, pinned int
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM notifications").Scan(&totalNotifs)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM notifications WHERE is_read = FALSE").Scan(&unreadNotifs)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages WHERE is_pinned = TRUE").Scan(&pinned)
+	totalProjects := scanCount("SELECT COUNT(*) FROM projects")
+	totalMemberships := scanCount("SELECT COUNT(*) FROM memberships")
+	totalChannels := scanCount("SELECT COUNT(*) FROM channels")
+
+	totalNotifs := scanCount("SELECT COUNT(*) FROM notifications")
+	unreadNotifs := scanCount("SELECT COUNT(*) FROM notifications WHERE is_read = FALSE")
+	pinned := scanCount("SELECT COUNT(*) FROM messages WHERE is_pinned = TRUE")
 
 	stats["total_users"] = totalUsers
 	stats["users_today"] = usersToday
@@ -118,6 +123,7 @@ func (h *Handler) HandleObsUsers(c *gin.Context) {
 		LIMIT $1
 	`, limit)
 	if err != nil {
+		log.Printf("[obs] users query failed: %v", err)
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -153,11 +159,18 @@ func (h *Handler) HandleObsUsers(c *gin.Context) {
 func (h *Handler) HandleObsErrors(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var incompleteProfiles, noLoops, orphanedMessages, deletedMessages int
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE profile_completed = FALSE").Scan(&incompleteProfiles)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE id NOT IN (SELECT DISTINCT user_id FROM memberships)").Scan(&noLoops)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages WHERE sender_id NOT IN (SELECT id FROM users)").Scan(&orphanedMessages)
-	h.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM messages WHERE is_deleted = TRUE").Scan(&deletedMessages)
+	scanCount := func(label, query string) int {
+		var n int
+		if err := h.Pool.QueryRow(ctx, query).Scan(&n); err != nil {
+			log.Printf("[obs] errors/%s query failed: %v", label, err)
+		}
+		return n
+	}
+
+	incompleteProfiles := scanCount("incomplete", "SELECT COUNT(*) FROM users WHERE profile_completed = FALSE")
+	noLoops := scanCount("no_loops", "SELECT COUNT(*) FROM users WHERE id NOT IN (SELECT DISTINCT user_id FROM memberships)")
+	orphanedMessages := scanCount("orphaned", "SELECT COUNT(*) FROM messages WHERE sender_id NOT IN (SELECT id FROM users)")
+	deletedMessages := scanCount("deleted", "SELECT COUNT(*) FROM messages WHERE is_deleted = TRUE")
 
 	c.JSON(200, gin.H{
 		"incomplete_profiles": incompleteProfiles,
@@ -179,6 +192,7 @@ func (h *Handler) HandleObsTimeline(c *gin.Context) {
 		ORDER BY day ASC
 	`)
 	if err != nil {
+		log.Printf("[obs] timeline query failed: %v", err)
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -211,7 +225,7 @@ func (h *Handler) HandleObsLoops(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	rows, err := h.Pool.Query(ctx, `
-		SELECT p.name, p.display_name,
+		SELECT p.name,
 		       (SELECT COUNT(*) FROM memberships m WHERE m.project_id = p.id) AS member_count,
 		       (SELECT COUNT(*) FROM channels ch WHERE ch.project_id = p.id) AS channel_count,
 		       (SELECT COUNT(*) FROM messages msg 
@@ -226,6 +240,7 @@ func (h *Handler) HandleObsLoops(c *gin.Context) {
 		LIMIT 20
 	`)
 	if err != nil {
+		log.Printf("[obs] loops query failed: %v", err)
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -233,7 +248,6 @@ func (h *Handler) HandleObsLoops(c *gin.Context) {
 
 	type LoopInfo struct {
 		Name          string    `json:"name"`
-		DisplayName   *string   `json:"display_name"`
 		MemberCount   int       `json:"member_count"`
 		ChannelCount  int       `json:"channel_count"`
 		TotalMessages int       `json:"total_messages"`
@@ -244,7 +258,7 @@ func (h *Handler) HandleObsLoops(c *gin.Context) {
 	var loops []LoopInfo
 	for rows.Next() {
 		var l LoopInfo
-		if err := rows.Scan(&l.Name, &l.DisplayName, &l.MemberCount, &l.ChannelCount, &l.TotalMessages, &l.MessagesToday, &l.CreatedAt); err != nil {
+		if err := rows.Scan(&l.Name, &l.MemberCount, &l.ChannelCount, &l.TotalMessages, &l.MessagesToday, &l.CreatedAt); err != nil {
 			continue
 		}
 		loops = append(loops, l)
