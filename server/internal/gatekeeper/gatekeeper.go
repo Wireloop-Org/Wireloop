@@ -93,7 +93,11 @@ func (g *Gatekeeper) checkRule(ctx context.Context, accessToken, repoOwner, repo
 	}
 
 	if err != nil {
-		return result, err
+		// Non-fatal: if we can't check a rule (e.g. private repo, API error), mark as failed with a message
+		result.Passed = false
+		result.Actual = 0
+		result.Message = fmt.Sprintf("✗ Could not verify %s (repo may be private or inaccessible)", strings.ToLower(string(rule.CriteriaType)))
+		return result, nil
 	}
 
 	result.Actual = actual
@@ -279,10 +283,11 @@ func ParseThreshold(s string) (int, error) {
 	return strconv.Atoi(s)
 }
 
-// CheckCollaborator checks if a user is a collaborator (has write/admin access) on a GitHub repo.
-// GitHub returns 204 if collaborator, 404 if not, 403 if no permission to check.
+// CheckCollaborator checks if a user is a collaborator (has write/admin/push access) on a GitHub repo.
+// Uses GET /repos/{owner}/{repo} which returns the user's permissions on the repo.
+// This works with any token that has access to the repo — no admin required.
 func (g *Gatekeeper) CheckCollaborator(ctx context.Context, accessToken, owner, repo, username string) (bool, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/collaborators/%s", owner, repo, username)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -298,13 +303,24 @@ func (g *Gatekeeper) CheckCollaborator(ctx context.Context, accessToken, owner, 
 	}
 	defer resp.Body.Close()
 
-	// 204 = is a collaborator, 404 = not a collaborator, 403 = can't check (private repo, no admin access)
-	switch resp.StatusCode {
-	case http.StatusNoContent:
-		return true, nil
-	case http.StatusNotFound, http.StatusForbidden:
+	if resp.StatusCode != http.StatusOK {
 		return false, nil
-	default:
-		return false, fmt.Errorf("GitHub collaborator check returned %d", resp.StatusCode)
 	}
+
+	var repoData struct {
+		Permissions struct {
+			Admin    bool `json:"admin"`
+			Maintain bool `json:"maintain"`
+			Push     bool `json:"push"`
+			Triage   bool `json:"triage"`
+			Pull     bool `json:"pull"`
+		} `json:"permissions"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&repoData); err != nil {
+		return false, err
+	}
+
+	// User has push (write) access or higher = collaborator
+	return repoData.Permissions.Push || repoData.Permissions.Admin || repoData.Permissions.Maintain, nil
 }

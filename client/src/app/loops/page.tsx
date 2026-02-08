@@ -41,6 +41,7 @@ export default function BrowseLoopsPage() {
   const [joining, setJoining] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [memberships, setMemberships] = useState<LoopMembership[]>([]);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     const token = getToken();
@@ -73,6 +74,7 @@ export default function BrowseLoopsPage() {
   const handleSelectLoop = async (loop: BrowseLoop) => {
     setSelectedLoop(loop);
     setVerification(null);
+    setVerifyError(null);
 
     // Check if user is already a member from cached memberships
     const existingMembership = memberships.find(m => m.loop_name === loop.name);
@@ -94,6 +96,7 @@ export default function BrowseLoopsPage() {
       setVerification(result);
     } catch (err) {
       console.error("Verification failed:", err);
+      setVerifyError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setVerifying(false);
     }
@@ -375,6 +378,37 @@ export default function BrowseLoopsPage() {
                         <p className="text-neutral-500">
                           Verifying your contributions...
                         </p>
+                      </div>
+                    ) : verifyError ? (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                          <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            Verification Unavailable
+                          </div>
+                          <p className="text-sm text-neutral-600">
+                            Could not verify eligibility. The repo may be private or the check timed out.
+                          </p>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleSelectLoop(selectedLoop)}
+                          className="w-full py-3 rounded-xl bg-neutral-200 text-neutral-700 font-medium transition-colors hover:bg-neutral-300"
+                        >
+                          Retry
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleJoin}
+                          disabled={joining}
+                          className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
+                        >
+                          {joining ? "Joining..." : "Try Joining Anyway"}
+                        </motion.button>
                       </div>
                     ) : verification ? (
                       <>

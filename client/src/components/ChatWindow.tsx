@@ -580,6 +580,7 @@ export default function ChatWindow({
   const [verifying, setVerifying] = useState(false);
   const [verification, setVerification] = useState<VerifyAccessResponse | null>(null);
   const [joining, setJoining] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   // Channel state
   const [currentChannel, setCurrentChannel] = useState<Channel | undefined>(activeChannel);
@@ -1147,11 +1148,13 @@ export default function ChatWindow({
   // Handle verify access
   const handleVerify = async () => {
     setVerifying(true);
+    setVerifyError(null);
     try {
       const result = await api.verifyAccess(loopDetails.name);
       setVerification(result);
     } catch (err) {
       console.error("Verification failed:", err);
+      setVerifyError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setVerifying(false);
     }
@@ -1194,7 +1197,38 @@ export default function ChatWindow({
             This loop requires verification of your GitHub contributions to join.
           </p>
 
-          {!verification ? (
+          {verifyError ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="flex items-center gap-2 text-amber-700 font-medium mb-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Verification Unavailable
+                </div>
+                <p className="text-sm text-neutral-600">
+                  Could not verify eligibility. The repo may be private or inaccessible.
+                </p>
+              </div>
+              <motion.button
+                onClick={handleVerify}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3 rounded-xl bg-neutral-200 text-neutral-700 font-medium transition-colors hover:bg-neutral-300"
+              >
+                Retry
+              </motion.button>
+              <motion.button
+                onClick={handleJoin}
+                disabled={joining}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {joining ? "Joining..." : "Try Joining Anyway"}
+              </motion.button>
+            </div>
+          ) : !verification ? (
             <motion.button
               onClick={handleVerify}
               disabled={verifying}

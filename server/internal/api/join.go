@@ -111,10 +111,16 @@ func (h *Handler) HandleVerifyAccess(c *gin.Context) {
 		}
 	}
 
-	// Verify access against rules
+	// Verify access against rules (non-fatal — individual rule failures are handled gracefully)
 	results, passed, err := gate.VerifyAccess(c, user.AccessToken, owner.Username, project.Name, user.Username, gkRules)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "verification failed: " + err.Error()})
+		// Even if verification itself fails, return a 200 with can_join=false so the UI can show something useful
+		c.JSON(200, gin.H{
+			"is_member": false,
+			"can_join":  false,
+			"message":   "Could not verify your contributions. The repo may be private or inaccessible.",
+			"results":   []gatekeeper.VerificationResult{},
+		})
 		return
 	}
 
