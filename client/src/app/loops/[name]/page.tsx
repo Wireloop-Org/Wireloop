@@ -367,7 +367,7 @@ export default function LoopPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col h-full"
+              className="flex-1 flex flex-col h-full min-h-0"
             >
               <ChatWindow
                 loopDetails={{
