@@ -3,238 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wireloop · Observability</title>
+    <title>Wireloop — Observability</title>
     <style>
         :root {
-            --bg: #0d1117;
-            --surface: #161b22;
-            --border: #30363d;
-            --text: #e6edf3;
-            --text-muted: #8b949e;
-            --accent: #58a6ff;
-            --green: #3fb950;
-            --red: #f85149;
-            --orange: #d29922;
-            --purple: #bc8cff;
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --surface-2: #1a1a1a;
+            --border: #262626;
+            --text: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #3b82f6;
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --purple: #a78bfa;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: var(--bg);
             color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Helvetica, Arial, sans-serif;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
 
         .header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 16px 24px;
+            padding: 14px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
         }
-        .header h1 { font-size: 20px; font-weight: 600; }
-        .header h1 span { color: var(--accent); }
-        .header-right { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-logo {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .header-logo svg { width: 14px; height: 14px; fill: white; }
+        .header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+        .header h1 .sep { color: var(--text-muted); margin: 0 6px; font-weight: 300; }
+        .header h1 .label { color: var(--text-secondary); font-weight: 500; }
+        .header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-muted); }
+        .status-indicator { display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
         .status-dot.error { background: var(--red); }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        .container { max-width: 1320px; margin: 0 auto; padding: 24px; }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-bottom: 28px;
         }
         .stat-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 10px;
+            padding: 16px 18px;
+            transition: border-color 0.15s;
         }
-        .stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .stat-card .value { font-size: 28px; font-weight: 700; }
-        .stat-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .stat-card:hover { border-color: #333; }
+        .stat-card .label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .stat-card .value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+        .stat-card .sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+        .stat-card .value.blue { color: var(--accent); }
         .stat-card .value.green { color: var(--green); }
-        .stat-card .value.accent { color: var(--accent); }
-        .stat-card .value.orange { color: var(--orange); }
+        .stat-card .value.amber { color: var(--amber); }
         .stat-card .value.purple { color: var(--purple); }
 
-        /* Section */
-        .section { margin-bottom: 32px; }
-        .section-title {
-            font-size: 16px;
+        .section { margin-bottom: 28px; }
+        .section-header {
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            letter-spacing: -0.01em;
         }
 
-        /* Chart */
         .chart-container {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 32px;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
         }
         .chart-bars {
             display: flex;
             align-items: flex-end;
-            gap: 3px;
-            height: 160px;
+            gap: 2px;
+            height: 140px;
             padding-top: 8px;
         }
         .chart-bar {
             flex: 1;
             background: var(--accent);
-            border-radius: 3px 3px 0 0;
-            min-width: 4px;
+            border-radius: 2px 2px 0 0;
+            min-width: 3px;
             position: relative;
-            transition: opacity 0.2s;
+            transition: opacity 0.15s;
             cursor: pointer;
+            opacity: 0.85;
         }
-        .chart-bar:hover { opacity: 0.8; }
+        .chart-bar:hover { opacity: 1; }
         .chart-bar .tooltip {
             display: none;
             position: absolute;
             bottom: calc(100% + 8px);
             left: 50%;
             transform: translateX(-50%);
-            background: #000;
-            color: #fff;
+            background: var(--text);
+            color: var(--bg);
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 5px;
             font-size: 11px;
+            font-weight: 500;
             white-space: nowrap;
             z-index: 10;
         }
         .chart-bar:hover .tooltip { display: block; }
-        .chart-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-muted); }
+        .chart-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: var(--text-muted); }
 
-        /* Tables */
         .data-table {
             width: 100%;
             border-collapse: collapse;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 10px;
             overflow: hidden;
+            font-size: 13px;
         }
         .data-table th {
             text-align: left;
             padding: 10px 14px;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.06em;
+            font-weight: 500;
             border-bottom: 1px solid var(--border);
-            background: rgba(0,0,0,0.15);
+            background: var(--surface-2);
         }
         .data-table td {
             padding: 10px 14px;
-            font-size: 13px;
             border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
         }
         .data-table tr:last-child td { border-bottom: none; }
-        .data-table tr:hover td { background: rgba(88,166,255,0.04); }
-        .avatar { width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+        .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .data-table td strong { color: var(--text); font-weight: 500; }
+        .avatar { width: 22px; height: 22px; border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+
         .badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             padding: 2px 8px;
-            border-radius: 10px;
+            border-radius: 6px;
             font-size: 11px;
             font-weight: 500;
         }
-        .badge.green { background: rgba(63,185,80,0.15); color: var(--green); }
-        .badge.red { background: rgba(248,81,73,0.15); color: var(--red); }
-        .badge.orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+        .badge.green { background: rgba(34,197,94,0.12); color: var(--green); }
+        .badge.red { background: rgba(239,68,68,0.12); color: var(--red); }
+        .badge.amber { background: rgba(245,158,11,0.12); color: var(--amber); }
+        .badge.muted { background: rgba(113,113,122,0.12); color: var(--text-muted); }
 
-        /* Errors */
-        .error-grid {
+        .anomaly-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
         }
-        .error-card {
+        .anomaly-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 10px;
+            padding: 16px 18px;
         }
-        .error-card .count { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
-        .error-card .count.ok { color: var(--green); }
-        .error-card .count.warn { color: var(--orange); }
-        .error-card .count.bad { color: var(--red); }
-        .error-card .desc { font-size: 13px; color: var(--text-muted); }
+        .anomaly-card .count { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .anomaly-card .count.ok { color: var(--green); }
+        .anomaly-card .count.warn { color: var(--amber); }
+        .anomaly-card .count.bad { color: var(--red); }
+        .anomaly-card .desc { font-size: 12px; color: var(--text-muted); }
 
-        /* DB Pool */
+        .pool-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 18px;
+        }
+        .pool-meta { font-size: 13px; margin-bottom: 8px; color: var(--text-secondary); }
+        .pool-meta strong { color: var(--text); font-weight: 600; }
         .pool-bar {
-            height: 24px;
+            height: 20px;
             background: var(--border);
             border-radius: 4px;
             overflow: hidden;
             display: flex;
-            margin-top: 8px;
         }
-        .pool-segment { height: 100%; transition: width 0.3s; }
+        .pool-segment { height: 100%; transition: width 0.3s ease; }
         .pool-segment.active { background: var(--accent); }
         .pool-segment.idle { background: var(--green); }
-        .pool-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
-        .pool-legend span::before {
-            content: '';
-            display: inline-block;
-            width: 8px; height: 8px;
-            border-radius: 2px;
-            margin-right: 4px;
-            vertical-align: middle;
-        }
-        .pool-legend .active::before { background: var(--accent); }
-        .pool-legend .idle::before { background: var(--green); }
-        .pool-legend .free::before { background: var(--border); }
+        .pool-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--text-muted); }
+        .pool-legend span { display: flex; align-items: center; gap: 4px; }
+        .pool-legend .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+        .pool-legend .dot.active { background: var(--accent); }
+        .pool-legend .dot.idle { background: var(--green); }
+        .pool-legend .dot.free { background: var(--border); }
 
-        .loading { text-align: center; padding: 60px; color: var(--text-muted); }
-        .error-msg { text-align: center; padding: 40px; color: var(--red); }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        .loading { text-align: center; padding: 80px 0; color: var(--text-muted); font-size: 13px; }
+        .error-msg { text-align: center; padding: 60px 0; color: var(--red); font-size: 13px; }
 
         @media (max-width: 768px) {
-            .container { padding: 12px; }
+            .container { padding: 14px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .two-col { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><span>⚡</span> Wireloop <span>Observability</span></h1>
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <h1>Wireloop<span class="sep">/</span><span class="label">Observability</span></h1>
+        </div>
         <div class="header-right">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Connecting...</span>
-            <span>|</span>
-            <span id="lastRefresh">—</span>
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting</span>
+            </div>
+            <span id="lastRefresh">--</span>
         </div>
     </div>
 
     <div class="container" id="app">
-        <div class="loading" id="loadingState">Loading dashboard...</div>
+        <div class="loading" id="loadingState">Initializing dashboard...</div>
     </div>
 
     <script>
-        const API_BASE = window.OBS_API_BASE || 'https://wireloop.onrender.com';
-        const REFRESH_INTERVAL = 30000; // 30 seconds
+        const API_BASE = window.OBS_API_BASE || 'https://api.wireloop.live';
+        const REFRESH_INTERVAL = 30000;
 
-        // Prompt for credentials once (stored in memory only)
-        let authHeader = '';
+        const AUTH_KEY = 'wireloop_obs_auth';
+
+        let authHeader = localStorage.getItem(AUTH_KEY) || '';
         function getAuth() {
             if (authHeader) return authHeader;
-            const user = prompt('Observability Username:');
-            const pass = prompt('Observability Password:');
+            const user = prompt('Username');
+            const pass = prompt('Password');
             if (!user || !pass) {
-                document.getElementById('app').innerHTML = '<div class="error-msg">Authentication required</div>';
+                document.getElementById('app').innerHTML = '<div class="error-msg">Authentication required to access this dashboard.</div>';
                 throw new Error('No credentials');
             }
             authHeader = 'Basic ' + btoa(user + ':' + pass);
+            localStorage.setItem(AUTH_KEY, authHeader);
             return authHeader;
         }
 
@@ -244,13 +287,14 @@
             });
             if (res.status === 401) {
                 authHeader = '';
-                document.getElementById('app').innerHTML = '<div class="error-msg">Invalid credentials. Refresh to retry.</div>';
+                localStorage.removeItem(AUTH_KEY);
+                document.getElementById('app').innerHTML = '<div class="error-msg">Invalid credentials. Refresh the page to retry.</div>';
                 throw new Error('Unauthorized');
             }
             if (!res.ok) {
                 const body = await res.text().catch(() => '');
-                console.error(`[obs] ${endpoint} failed: ${res.status}`, body);
-                return null; // Return null instead of throwing — let other endpoints succeed
+                console.error(`[obs] ${endpoint}: ${res.status}`, body);
+                return null;
             }
             return res.json();
         }
@@ -263,7 +307,7 @@
             return Math.floor(s / 86400) + 'd ago';
         }
 
-        function errSeverity(n) {
+        function severity(n) {
             if (n === 0) return 'ok';
             if (n < 5) return 'warn';
             return 'bad';
@@ -281,9 +325,8 @@
 
                 document.getElementById('statusDot').className = 'status-dot';
                 document.getElementById('statusText').textContent = 'Connected';
-                document.getElementById('lastRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+                document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString();
 
-                // Fallback for any endpoint that returned null
                 const s = stats || {};
                 const u = users || [];
                 const e = errors || {};
@@ -295,49 +338,45 @@
                 const activePercent = ((pool.acquired_conns || 0) / maxConns * 100).toFixed(0);
                 const idlePercent = ((pool.idle_conns || 0) / maxConns * 100).toFixed(0);
 
-                // Build chart
                 const maxMsg = Math.max(...t.map(d => d.count), 1);
                 const chartBars = t.map(d => {
                     const h = Math.max((d.count / maxMsg) * 100, 2);
-                    return `<div class="chart-bar" style="height:${h}%"><div class="tooltip">${d.day}: ${d.count} msgs</div></div>`;
+                    return `<div class="chart-bar" style="height:${h}%"><div class="tooltip">${d.day} — ${d.count} messages</div></div>`;
                 }).join('');
                 const chartLabels = t.length > 0
-                    ? `<span>${t[0].day}</span><span>${t[t.length - 1].day}</span>`
+                    ? `<span>${t[0].day}</span><span>${t[Math.floor(t.length/2)]?.day || ''}</span><span>${t[t.length - 1].day}</span>`
                     : '<span>No data</span>';
 
-                // Build users table
                 const userRows = u.slice(0, 25).map(usr => `
                     <tr>
-                        <td>${usr.avatar_url ? `<img class="avatar" src="${usr.avatar_url}" alt="">` : ''}${usr.username}</td>
+                        <td>${usr.avatar_url ? `<img class="avatar" src="${usr.avatar_url}" alt="" loading="lazy">` : ''}<strong>${usr.username}</strong></td>
                         <td>${usr.loop_count}</td>
                         <td>${usr.message_count}</td>
-                        <td><span class="badge ${usr.profile_completed ? 'green' : 'orange'}">${usr.profile_completed ? 'Complete' : 'Incomplete'}</span></td>
+                        <td><span class="badge ${usr.profile_completed ? 'green' : 'amber'}">${usr.profile_completed ? 'Complete' : 'Incomplete'}</span></td>
                         <td>${timeAgo(usr.created_at)}</td>
                     </tr>
                 `).join('');
 
-                // Build loops table
                 const loopRows = l.map(lp => `
                     <tr>
                         <td><strong>${lp.name}</strong></td>
                         <td>${lp.member_count}</td>
                         <td>${lp.channel_count}</td>
                         <td>${lp.total_messages}</td>
-                        <td><span class="badge ${lp.messages_today > 0 ? 'green' : ''}">${lp.messages_today}</span></td>
+                        <td><span class="badge ${lp.messages_today > 0 ? 'green' : 'muted'}">${lp.messages_today}</span></td>
                         <td>${timeAgo(lp.created_at)}</td>
                     </tr>
                 `).join('');
 
                 document.getElementById('app').innerHTML = `
-                    <!-- Stats Cards -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="label">Total Users</div>
-                            <div class="value accent">${s.total_users ?? '—'}</div>
-                            <div class="sub">+${s.users_today ?? 0} today · +${s.users_this_week ?? 0} this week</div>
+                            <div class="label">Users</div>
+                            <div class="value blue">${s.total_users ?? '—'}</div>
+                            <div class="sub">+${s.users_today ?? 0} today / +${s.users_this_week ?? 0} this week</div>
                         </div>
                         <div class="stat-card">
-                            <div class="label">Total Messages</div>
+                            <div class="label">Messages</div>
                             <div class="value green">${s.total_messages ?? '—'}</div>
                             <div class="sub">+${s.messages_today ?? 0} today</div>
                         </div>
@@ -352,97 +391,88 @@
                         </div>
                         <div class="stat-card">
                             <div class="label">Notifications</div>
-                            <div class="value orange">${s.total_notifications ?? '—'}</div>
+                            <div class="value amber">${s.total_notifications ?? '—'}</div>
                             <div class="sub">${s.unread_notifications ?? 0} unread</div>
                         </div>
                         <div class="stat-card">
-                            <div class="label">Pinned Messages</div>
+                            <div class="label">Pinned</div>
                             <div class="value">${s.pinned_messages ?? '—'}</div>
                         </div>
                     </div>
 
-                    <!-- Message Timeline -->
                     <div class="chart-container">
-                        <div class="section-title">Messages (Last 30 Days)</div>
+                        <div class="section-header">Message Volume — Last 30 Days</div>
                         <div class="chart-bars">${chartBars}</div>
                         <div class="chart-labels">${chartLabels}</div>
                     </div>
 
-                    <!-- DB Pool -->
                     <div class="section">
-                        <div class="section-title">Database Pool</div>
-                        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;">
-                            <div style="font-size:13px;margin-bottom:4px;">
-                                <strong>${pool.acquired_conns || 0}</strong> active · 
-                                <strong>${pool.idle_conns || 0}</strong> idle · 
-                                <strong>${pool.total_conns || 0}</strong>/${pool.max_conns || 0} total
+                        <div class="section-header">Database Pool</div>
+                        <div class="pool-container">
+                            <div class="pool-meta">
+                                <strong>${pool.acquired_conns || 0}</strong> active &middot;
+                                <strong>${pool.idle_conns || 0}</strong> idle &middot;
+                                <strong>${pool.total_conns || 0}</strong> / ${pool.max_conns || 0} total
                             </div>
                             <div class="pool-bar">
                                 <div class="pool-segment active" style="width:${activePercent}%"></div>
                                 <div class="pool-segment idle" style="width:${idlePercent}%"></div>
                             </div>
                             <div class="pool-legend">
-                                <span class="active">Active (${activePercent}%)</span>
-                                <span class="idle">Idle (${idlePercent}%)</span>
-                                <span class="free">Free</span>
+                                <span><span class="dot active"></span> Active (${activePercent}%)</span>
+                                <span><span class="dot idle"></span> Idle (${idlePercent}%)</span>
+                                <span><span class="dot free"></span> Free</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Errors / Anomalies -->
                     <div class="section">
-                        <div class="section-title">Anomalies</div>
-                        <div class="error-grid">
-                            <div class="error-card">
-                                <div class="count ${errSeverity(e.incomplete_profiles ?? 0)}">${e.incomplete_profiles ?? '—'}</div>
-                                <div class="desc">Incomplete Profiles</div>
+                        <div class="section-header">Anomalies</div>
+                        <div class="anomaly-grid">
+                            <div class="anomaly-card">
+                                <div class="count ${severity(e.incomplete_profiles ?? 0)}">${e.incomplete_profiles ?? '—'}</div>
+                                <div class="desc">Incomplete profiles</div>
                             </div>
-                            <div class="error-card">
-                                <div class="count ${errSeverity(e.users_no_loops ?? 0)}">${e.users_no_loops ?? '—'}</div>
-                                <div class="desc">Users Without Loops</div>
+                            <div class="anomaly-card">
+                                <div class="count ${severity(e.users_no_loops ?? 0)}">${e.users_no_loops ?? '—'}</div>
+                                <div class="desc">Users without loops</div>
                             </div>
-                            <div class="error-card">
-                                <div class="count ${errSeverity(e.orphaned_messages ?? 0)}">${e.orphaned_messages ?? '—'}</div>
-                                <div class="desc">Orphaned Messages</div>
+                            <div class="anomaly-card">
+                                <div class="count ${severity(e.orphaned_messages ?? 0)}">${e.orphaned_messages ?? '—'}</div>
+                                <div class="desc">Orphaned messages</div>
                             </div>
-                            <div class="error-card">
-                                <div class="count ${errSeverity(e.deleted_messages ?? 0)}">${e.deleted_messages ?? '—'}</div>
-                                <div class="desc">Deleted Messages</div>
+                            <div class="anomaly-card">
+                                <div class="count ${severity(e.deleted_messages ?? 0)}">${e.deleted_messages ?? '—'}</div>
+                                <div class="desc">Deleted messages</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Users Table -->
-                    <div class="section">
-                        <div class="section-title">Recent Users (${u.length})</div>
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>User</th><th>Loops</th><th>Messages</th><th>Profile</th><th>Joined</th></tr>
-                            </thead>
-                            <tbody>${userRows || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No users yet</td></tr>'}</tbody>
-                        </table>
-                    </div>
-
-                    <!-- Loops Table -->
-                    <div class="section">
-                        <div class="section-title">Active Loops</div>
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Loop</th><th>Members</th><th>Channels</th><th>Messages</th><th>Today</th><th>Created</th></tr>
-                            </thead>
-                            <tbody>${loopRows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loops yet</td></tr>'}</tbody>
-                        </table>
+                    <div class="two-col">
+                        <div class="section">
+                            <div class="section-header">Users (${u.length})</div>
+                            <table class="data-table">
+                                <thead><tr><th>User</th><th>Loops</th><th>Msgs</th><th>Profile</th><th>Joined</th></tr></thead>
+                                <tbody>${userRows || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No users</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                        <div class="section">
+                            <div class="section-header">Active Loops</div>
+                            <table class="data-table">
+                                <thead><tr><th>Loop</th><th>Members</th><th>Channels</th><th>Msgs</th><th>Today</th><th>Created</th></tr></thead>
+                                <tbody>${loopRows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No loops</td></tr>'}</tbody>
+                            </table>
+                        </div>
                     </div>
                 `;
             } catch (err) {
                 if (err.message === 'Unauthorized' || err.message === 'No credentials') return;
                 document.getElementById('statusDot').className = 'status-dot error';
-                document.getElementById('statusText').textContent = 'Error: ' + err.message;
-                console.error('Dashboard error:', err);
+                document.getElementById('statusText').textContent = 'Error';
+                console.error('[obs]', err);
             }
         }
 
-        // Initial load + auto-refresh
         loadDashboard();
         setInterval(loadDashboard, REFRESH_INTERVAL);
     </script>
