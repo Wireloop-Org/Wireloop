@@ -3,3 +3,7 @@
 **/*.env
 **/*.key
 server/tests
+
+.env.prod
+
+wireloop-server

@@ -21,7 +21,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -52,10 +51,7 @@ func main() {
 		log.Fatalf("Unable to parse database URL: %v\n", err)
 	}
 
-	// Use simple protocol — disables prepared statements for PgBouncer/Supabase pooler
-	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-
-	// Connection pool settings (conservative for Supabase free-tier)
+	// Connection pool settings
 	maxConns := 10
 	if maxConnsStr := os.Getenv("MAX_DB_CONN"); maxConnsStr != "" {
 		if parsedMaxConns, err := strconv.Atoi(maxConnsStr); err == nil {
@@ -91,7 +87,7 @@ func main() {
 	if pingErr != nil {
 		log.Fatalf("Database is unreachable after 5 attempts: %v\n", pingErr)
 	}
-	log.Println("Successfully connected to PostgreSQL (Supabase/RDS)")
+	log.Println("Successfully connected to PostgreSQL")
 
 	queries := db.New(pool)
 	app := &App{
@@ -122,7 +118,7 @@ func main() {
 	r := gin.Default()
 
 	// GZIP compression - ~70% bandwidth savings on JSON responses
-	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	r.Use(gzip.Gzip(gzip.BestSpeed))
 
 	// Global rate limiting - 100 req/min per IP (prevents abuse)
 	r.Use(middleware.RateLimitMiddleware())
