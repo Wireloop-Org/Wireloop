@@ -82,9 +82,6 @@ const LoopItem = memo(function LoopItem({
           {badge}
         </div>
       </div>
-      {isSelected && (
-        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-white" />
-      )}
     </motion.button>
   );
 });
