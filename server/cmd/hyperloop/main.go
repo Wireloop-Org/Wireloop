@@ -189,7 +189,7 @@ func main() {
 		log.Printf("[auth] OAuth flow started, clientID=%s..., callback=%s, state=%s", clientID[:min(10, len(clientID))], callbackURL, state[:8])
 
 		redirectURL := fmt.Sprintf(
-			"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email&state=%s",
+			"https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=user:email+repo&state=%s",
 			clientID,
 			url.QueryEscape(callbackURL),
 			state,
