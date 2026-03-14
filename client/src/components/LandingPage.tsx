@@ -29,9 +29,9 @@ export default function LandingPage() {
               Merit-gated access, <br />zero gatekeepers
             </h2>
             <p className="text-base text-zinc-500 leading-relaxed max-w-xl">
-              Wireloop verifies GitHub contributions in real time — merged PRs,
-              code reviews, labels — so only people who actually ship can join a
-              Loop. No invites, no waiting rooms.
+              Wireloop verifies your GitHub contributions in real time — merged PRs,
+              code reviews, commit history — so only people who actually ship can join a
+              Loop. No invites. No waiting rooms. No politics.
             </p>
             <div className="flex items-center gap-6 pt-2">
               <a
@@ -155,13 +155,18 @@ export default function LandingPage() {
                 Platform
               </a>
               <a href="#loops" className="hover:text-zinc-900 transition-colors">
-                Loops
+                Features
               </a>
               <a href="#access" className="hover:text-zinc-900 transition-colors">
                 How It Works
               </a>
-              <a href="#manifesto" className="hover:text-zinc-900 transition-colors">
-                Manifesto
+              <a
+                href="https://github.com/Wireloop-Org/Wireloop"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-zinc-900 transition-colors"
+              >
+                GitHub
               </a>
             </div>
 
