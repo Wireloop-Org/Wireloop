@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Navbar from "./Navbar";
 import Hero from "./Hero";
 import FeatureGrid from "./FeatureGrid";
@@ -15,13 +14,7 @@ export default function LandingPage() {
       <section id="access" className="relative py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: Content */}
-          <motion.div
-            className="space-y-6"
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <div className="space-y-6">
             <span className="text-xs uppercase tracking-widest text-zinc-500 font-medium">
               How It Works
             </span>
@@ -35,28 +28,22 @@ export default function LandingPage() {
             </p>
             <div className="flex items-center gap-6 pt-2">
               <a
-                href="#loops"
+                href="/features"
                 className="text-sm font-medium text-zinc-900 border-b border-zinc-900 pb-0.5 hover:opacity-70 transition-opacity"
               >
-                Browse Loops
+                Browse Features
               </a>
               <a
-                href="#manifesto"
+                href="/manifesto"
                 className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
               >
                 Why Wireloop
               </a>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right: Stats Card */}
-          <motion.div
-            className="rounded-3xl border border-zinc-200 p-8 bg-zinc-50"
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
+          <div className="rounded-3xl border border-zinc-200 p-8 bg-zinc-50">
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <div className="text-3xl font-semibold text-zinc-900 mb-1">
@@ -83,7 +70,7 @@ export default function LandingPage() {
                 <div className="text-xs text-zinc-500">Channels &amp; threads</div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -93,14 +80,7 @@ export default function LandingPage() {
       <section id="manifesto" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-            {/* Left Column */}
-            <motion.div
-              className="space-y-6"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
+            <div className="space-y-6">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-medium">
                 Manifesto
               </span>
@@ -109,19 +89,12 @@ export default function LandingPage() {
               </h2>
               <p className="text-base text-zinc-500 leading-relaxed">
                 Every Loop is anchored to a repository. Channels map to
-                workflows, threads map to decisions, and context from issues 
+                workflows, threads map to decisions, and context from issues
                 and PRs surfaces right inside the conversation — automatically.
               </p>
-            </motion.div>
+            </div>
 
-            {/* Right Column */}
-            <motion.div
-              className="space-y-6"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-            >
+            <div className="space-y-6">
               <p className="text-base text-zinc-500 leading-relaxed">
                 Channels and threads stay tied to code changes, releases, and
                 milestones. Your team moves fast without losing context.
@@ -131,7 +104,7 @@ export default function LandingPage() {
                 earned their seat. No noise — just the people who
                 build.
               </p>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -140,7 +113,6 @@ export default function LandingPage() {
       <footer className="py-12 border-t border-zinc-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* Logo */}
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
                 <div className="w-2 h-2 bg-white rounded-full" />
@@ -148,17 +120,10 @@ export default function LandingPage() {
               <span className="font-bold text-sm tracking-tight">Wireloop</span>
             </div>
 
-            {/* Links */}
             <div className="flex items-center gap-8 text-xs text-zinc-500">
-              <a href="#platform" className="hover:text-zinc-900 transition-colors">
-                Platform
-              </a>
-              <a href="#loops" className="hover:text-zinc-900 transition-colors">
-                Features
-              </a>
-              <a href="#access" className="hover:text-zinc-900 transition-colors">
-                How It Works
-              </a>
+              <a href="/platform" className="hover:text-zinc-900 transition-colors">Platform</a>
+              <a href="/features" className="hover:text-zinc-900 transition-colors">Features</a>
+              <a href="/how-it-works" className="hover:text-zinc-900 transition-colors">How It Works</a>
               <a
                 href="https://github.com/Wireloop-Org/Wireloop"
                 target="_blank"
@@ -169,7 +134,6 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Copyright */}
             <p className="text-xs text-zinc-400">
               © {new Date().getFullYear()} Wireloop. All rights reserved.
             </p>
