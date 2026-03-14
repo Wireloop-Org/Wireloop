@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ChevronDown, ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -51,47 +50,24 @@ export default function Navbar() {
           {/* Logo & Links Container */}
           <div className="flex items-center gap-12">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
+            <a href="/" className="flex items-center gap-2 group">
               <div className="w-6 h-6 bg-black rounded flex items-center justify-center transition-transform group-hover:scale-105">
                 <div className="w-2.5 h-2.5 bg-white rounded-full" />
               </div>
               <span className="font-bold text-lg tracking-tight">Wireloop</span>
-            </Link>
+            </a>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-600">
-              <Link
-                href="#platform"
-                className="hover:text-black transition-colors"
-              >
-                Platform
-              </Link>
-              <Link
-                href="#loops"
-                className="hover:text-black transition-colors"
-              >
-                Loops
-              </Link>
-              <Link
-                href="#access"
-                className="hover:text-black transition-colors"
-              >
-                How It Works
-              </Link>
-              <Link
-                href="#manifesto"
-                className="hover:text-black transition-colors"
-              >
-                Manifesto
-              </Link>
+              <a href="#platform" className="hover:text-black transition-colors">Platform</a>
+              <a href="#loops" className="hover:text-black transition-colors">Features</a>
+              <a href="#access" className="hover:text-black transition-colors">How It Works</a>
+              <a href="#manifesto" className="hover:text-black transition-colors">Manifesto</a>
             </div>
           </div>
 
           {/* Right Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <button className="flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black px-2 transition-colors">
-              EN <ChevronDown size={14} />
-            </button>
 
             <button
               onClick={handleLogin}
@@ -123,34 +99,10 @@ export default function Navbar() {
             transition={{ duration: 0.2 }}
           >
             <div className="flex flex-col p-6 gap-6">
-              <Link
-                href="#platform"
-                className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Platform
-              </Link>
-              <Link
-                href="#loops"
-                className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Loops
-              </Link>
-              <Link
-                href="#access"
-                className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                How It Works
-              </Link>
-              <Link
-                href="#manifesto"
-                className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Manifesto
-              </Link>
+              <a href="#platform" className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100" onClick={() => setIsMenuOpen(false)}>Platform</a>
+              <a href="#loops" className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100" onClick={() => setIsMenuOpen(false)}>Features</a>
+              <a href="#access" className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100" onClick={() => setIsMenuOpen(false)}>How It Works</a>
+              <a href="#manifesto" className="text-lg font-medium text-zinc-900 py-2 border-b border-zinc-100" onClick={() => setIsMenuOpen(false)}>Manifesto</a>
 
               <button
                 onClick={() => {

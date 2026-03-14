@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -125,28 +124,28 @@ export default function Hero() {
         >
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-zinc-900 leading-[1.05]">
             Where code talks, <br />
-            builders listen
+            builders listen.
           </h1>
 
           <p className="text-base md:text-lg text-zinc-500 max-w-md leading-relaxed">
-            Wireloop is the collaboration layer for GitHub repositories.
-            Contribution-gated Loops, real-time channels, AI-powered context,
-            and zero noise — built for maintainers and the people who ship with them.
+            Wireloop is the collaboration layer for open-source repositories.
+            Contribution-gated Loops, real-time channels, and zero noise — 
+            built for maintainers and the people who ship with them.
           </p>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-4">
-            <Link
+            <a
               href="#loops"
               className="bg-zinc-950 text-white px-8 py-4 rounded-sm text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-colors"
             >
-              Explore Loops <ArrowRight size={16} />
-            </Link>
-            <Link
+              Explore Features <ArrowRight size={16} />
+            </a>
+            <a
               href="#access"
               className="px-6 py-4 rounded-sm text-sm font-medium text-zinc-900 border border-zinc-200 hover:border-zinc-400 transition-colors"
             >
               See How It Works
-            </Link>
+            </a>
           </div>
         </motion.div>
 

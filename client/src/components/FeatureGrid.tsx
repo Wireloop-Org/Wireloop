@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 
 // Wireframe-style SVG icons matching the design
@@ -142,12 +141,12 @@ export default function FeatureGrid() {
                   {feature.description}
                 </p>
 
-                <Link
+                <a
                   href={feature.link}
                   className="inline-flex items-center text-xs font-medium text-zinc-900 border-b border-zinc-900 pb-0.5 hover:opacity-70 transition-opacity"
                 >
                   Learn more
-                </Link>
+                </a>
               </div>
             </motion.div>
           ))}
