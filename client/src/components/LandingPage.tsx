@@ -105,13 +105,12 @@ export default function LandingPage() {
                 Manifesto
               </span>
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-zinc-900 leading-tight">
-                Ship code, not messages
+                Ship code, not messages.
               </h2>
               <p className="text-base text-zinc-500 leading-relaxed">
                 Every Loop is anchored to a repository. Channels map to
-                workflows, threads map to decisions, and AI surfaces the context
-                your team actually needs — issues, PRs, and summaries — right
-                inside the conversation.
+                workflows, threads map to decisions, and context from issues 
+                and PRs surfaces right inside the conversation — automatically.
               </p>
             </motion.div>
 
@@ -129,7 +128,7 @@ export default function LandingPage() {
               </p>
               <p className="text-base text-zinc-500 leading-relaxed">
                 Contribution-based access means every voice in the room has
-                earned their seat. No politics, no noise — just the people who
+                earned their seat. No noise — just the people who
                 build.
               </p>
             </motion.div>
