@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   getToken,
@@ -14,19 +13,6 @@ import {
   LoopMembership,
 } from "@/lib/api";
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.03, delayChildren: 0.05 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as const } }
-};
 
 export default function BrowseLoopsPage() {
   const router = useRouter();
@@ -154,17 +140,15 @@ export default function BrowseLoopsPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-neutral-200/50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <motion.button
+            <button
               onClick={() => router.push("/")}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
               <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
                 <div className="w-3 h-3 bg-white rounded-full" />
               </div>
               <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
-            </motion.button>
+            </button>
 
             <nav className="flex items-center gap-1">
               <button
@@ -214,9 +198,7 @@ export default function BrowseLoopsPage() {
         <div className="flex gap-8">
           {/* Loops Grid */}
           <div className="flex-1">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div
               className="flex items-center justify-between mb-8"
             >
               <div>
@@ -225,13 +207,10 @@ export default function BrowseLoopsPage() {
                   Find merit-based communities and join the conversation
                 </p>
               </div>
-            </motion.div>
+            </div>
 
             {/* Search */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+            <div 
               className="mb-6"
             >
               <div className="relative group">
@@ -256,13 +235,11 @@ export default function BrowseLoopsPage() {
                   className="w-full pl-12 pr-4 py-3.5 bg-white border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-100 transition-all"
                 />
               </div>
-            </motion.div>
+            </div>
 
             {/* Loops Grid */}
             {filteredLoops.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+              <div 
                 className="text-center py-20 rounded-2xl border-2 border-dashed border-neutral-300 bg-white"
               >
                 <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
@@ -276,18 +253,14 @@ export default function BrowseLoopsPage() {
                     ? "Try a different search term"
                     : "Be the first to create a loop!"}
                 </p>
-              </motion.div>
+              </div>
             ) : (
-              <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
+              <div 
                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
               >
                 {filteredLoops.map((loop) => (
-                  <motion.button
+                  <button
                     key={loop.id}
-                    variants={itemVariants}
                     onClick={() => handleSelectLoop(loop)}
                     className={`p-5 rounded-2xl border text-left transition-all ${selectedLoop?.id === loop.id
                       ? "bg-neutral-900 border-neutral-900 text-white shadow-xl shadow-neutral-900/20"
@@ -352,22 +325,18 @@ export default function BrowseLoopsPage() {
                         </div>
                       </div>
                     </div>
-                  </motion.button>
+                  </button>
                 ))}
-              </motion.div>
+              </div>
             )}
           </div>
 
           {/* Sidebar - Verification Panel */}
           <div className="w-96 flex-shrink-0">
             <div className="sticky top-24">
-              <AnimatePresence mode="wait">
                 {selectedLoop ? (
-                  <motion.div 
+                  <div 
                     key="verification"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
                     className="p-6 rounded-2xl bg-white border border-neutral-200 shadow-xl"
                   >
                     <h2 className="text-xl font-bold mb-4 text-neutral-900">{selectedLoop.name}</h2>
@@ -392,23 +361,19 @@ export default function BrowseLoopsPage() {
                             Could not verify eligibility. The repo may be private or the check timed out.
                           </p>
                         </div>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
+                        <button
                           onClick={() => handleSelectLoop(selectedLoop)}
                           className="w-full py-3 rounded-xl bg-neutral-200 text-neutral-700 font-medium transition-colors hover:bg-neutral-300"
                         >
                           Retry
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
+                        </button>
+                        <button
                           onClick={handleJoin}
                           disabled={joining}
                           className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
                         >
                           {joining ? "Joining..." : "Try Joining Anyway"}
-                        </motion.button>
+                        </button>
                       </div>
                     ) : verification ? (
                       <>
@@ -517,26 +482,22 @@ export default function BrowseLoopsPage() {
 
                         {/* Action Button */}
                         {verification.is_member ? (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                          <button
                             onClick={() =>
                               router.push(`/loops/${selectedLoop.name}`)
                             }
                             className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 shadow-lg shadow-neutral-900/10"
                           >
                             Open Loop
-                          </motion.button>
+                          </button>
                         ) : verification.can_join ? (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
+                          <button
                             onClick={handleJoin}
                             disabled={joining}
                             className="w-full py-3 rounded-xl bg-emerald-500 text-white font-medium transition-colors hover:bg-emerald-600 disabled:opacity-50 shadow-lg shadow-emerald-500/20"
                           >
                             {joining ? "Joining..." : "Join Loop"}
-                          </motion.button>
+                          </button>
                         ) : (
                           <button
                             disabled
@@ -547,13 +508,10 @@ export default function BrowseLoopsPage() {
                         )}
                       </>
                     ) : null}
-                  </motion.div>
+                  </div>
                 ) : (
-                  <motion.div 
+                  <div 
                     key="placeholder"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
                     className="p-8 rounded-2xl bg-white border-2 border-dashed border-neutral-300 text-center"
                   >
                     <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
@@ -565,9 +523,8 @@ export default function BrowseLoopsPage() {
                     <p className="text-sm text-neutral-500">
                       Click on a loop to verify your eligibility and join
                     </p>
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
             </div>
           </div>
         </div>

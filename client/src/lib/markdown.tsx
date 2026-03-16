@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { codeToHtml, type BundledLanguage } from "shiki";
+import React, { useCallback, useState } from "react";
 
-// Languages we support highlighting for — loaded on demand by Shiki
+// Languages shown in the header label only
 const SUPPORTED_LANGS = new Set([
   "javascript", "js", "typescript", "ts", "tsx", "jsx",
   "python", "py", "go", "rust", "rs", "java", "c", "cpp",
@@ -10,6 +9,7 @@ const SUPPORTED_LANGS = new Set([
   "sql", "bash", "sh", "shell", "zsh", "dockerfile",
   "markdown", "md", "graphql", "xml", "lua", "zig",
 ]);
+
 
 /**
  * Lightweight markdown renderer for chat messages and AI summaries.
@@ -104,10 +104,9 @@ function renderTextBlock(text: string): React.ReactNode {
   return <>{elements}</>;
 }
 
-/** Code block with Shiki syntax highlighting + copy button */
+/** Code block with copy button (no syntax highlighting to keep bundle small) */
 function CodeBlock({ code, language }: { code: string; language?: string }) {
   const [copied, setCopied] = useState(false);
-  const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code).then(() => {
@@ -116,33 +115,15 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
     });
   }, [code]);
 
-  // Highlight with Shiki (async, loads grammar on demand)
-  useEffect(() => {
-    let cancelled = false;
-    const lang = language?.toLowerCase();
-    const shikiLang = (lang && SUPPORTED_LANGS.has(lang) ? lang : "text") as BundledLanguage;
-
-    codeToHtml(code, {
-      lang: shikiLang,
-      theme: "github-dark",
-    })
-      .then((html) => {
-        if (!cancelled) setHighlightedHtml(html);
-      })
-      .catch(() => {
-        // Fallback: no highlighting
-        if (!cancelled) setHighlightedHtml(null);
-      });
-
-    return () => { cancelled = true; };
-  }, [code, language]);
+  const displayLang = language?.toLowerCase();
+  const label = displayLang && SUPPORTED_LANGS.has(displayLang) ? displayLang : "code";
 
   return (
     <div className="relative my-2 rounded-lg overflow-hidden bg-[#0d1117] border border-neutral-800 group/code">
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-[#161b22] border-b border-neutral-700/50">
         <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-          {language || "code"}
+          {label}
         </span>
         <button
           onClick={handleCopy}
@@ -165,17 +146,10 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
           )}
         </button>
       </div>
-      {/* Code content — Shiki highlighted or fallback */}
-      {highlightedHtml ? (
-        <div
-          className="p-3 overflow-x-auto text-[13px] leading-5 [&_pre]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_code]:!font-mono"
-          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-        />
-      ) : (
-        <pre className="p-3 overflow-x-auto text-[13px] leading-5">
-          <code className="text-neutral-100 font-mono whitespace-pre">{code}</code>
-        </pre>
-      )}
+      {/* Code content */}
+      <pre className="p-3 overflow-x-auto text-[13px] leading-5">
+        <code className="text-neutral-100 font-mono whitespace-pre">{code}</code>
+      </pre>
     </div>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   getToken,
@@ -234,9 +233,7 @@ export default function LoopPage() {
   if (error && !loopData) {
     return (
       <div className="h-screen flex items-center justify-center bg-neutral-50">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div 
           className="text-center max-w-md"
         >
           <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-6">
@@ -256,15 +253,13 @@ export default function LoopPage() {
               ? "The loop you are looking for does not exist."
               : "Please try again or go back to dashboard."}
           </p>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             onClick={() => router.push("/")}
             className="px-6 py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800"
           >
             Go to Dashboard
-          </motion.button>
-        </motion.div>
+          </button>
+        </div>
       </div>
     );
   }
@@ -280,30 +275,28 @@ export default function LoopPage() {
       <aside className="w-72 border-r border-neutral-200 bg-white flex flex-col h-full z-20">
         {/* Logo */}
         <div className="shrink-0 p-4 border-b border-neutral-200">
-          <motion.button
+          <button
             onClick={() => router.push("/")}
-            whileHover={{ opacity: 0.8 }}
             className="flex items-center gap-2"
           >
             <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
               <div className="w-3 h-3 bg-white rounded-full" />
             </div>
             <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
-          </motion.button>
+          </button>
         </div>
 
         {/* Back to Dashboard */}
         <div className="shrink-0 p-3 border-b border-neutral-200">
-          <motion.button
+          <button
             onClick={() => router.push("/")}
-            whileHover={{ x: -2 }}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Dashboard
-          </motion.button>
+          </button>
         </div>
 
         {/* Loops List */}
@@ -320,9 +313,8 @@ export default function LoopPage() {
         <div className="shrink-0 p-4 border-t border-neutral-200 bg-neutral-50/50">
           {profile ? (
             <>
-              <motion.button
+              <button
                 onClick={() => router.push("/profile")}
-                whileHover={{ backgroundColor: "rgb(245 245 245)" }}
                 className="w-full flex items-center gap-3 p-2 rounded-xl transition-colors group"
               >
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-200 relative ring-2 ring-neutral-100 group-hover:ring-neutral-200 transition-all">
@@ -338,7 +330,7 @@ export default function LoopPage() {
                   <div className="text-sm font-medium text-neutral-900 truncate">{displayName}</div>
                   <div className="text-xs text-neutral-500 truncate">@{profile.username}</div>
                 </div>
-              </motion.button>
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-full mt-2 px-4 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors font-medium"
@@ -360,13 +352,9 @@ export default function LoopPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <AnimatePresence mode="wait">
           {loopData ? (
-            <motion.div
+            <div
               key={loopData.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               className="flex-1 flex flex-col h-full min-h-0"
             >
               <ChatWindow
@@ -384,13 +372,12 @@ export default function LoopPage() {
                 onMembershipChanged={loadData}
                 currentUserId={initData?.profile?.id}
               />
-            </motion.div>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
             </div>
           )}
-        </AnimatePresence>
 
         {/* Members Panel (collapsible) */}
         {loopData && loopData.members.length > 0 && (
@@ -408,41 +395,31 @@ function MembersPanel({ members }: { members: LoopFullData["members"] }) {
 
   return (
     <div className="border-t border-neutral-200 bg-white">
-      <motion.button
+      <button
         onClick={() => setExpanded(!expanded)}
-        whileHover={{ backgroundColor: "rgb(250 250 250)" }}
         className="w-full px-6 py-3 flex items-center justify-between text-sm transition-colors"
       >
         <span className="text-neutral-500 font-medium">
           {members.length} Member{members.length !== 1 ? "s" : ""}
         </span>
-        <motion.svg
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
+        <svg
           className="w-4 h-4 text-neutral-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-        </motion.svg>
-      </motion.button>
+        </svg>
+      </button>
 
-      <AnimatePresence>
         {expanded && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          <div 
             className="overflow-hidden"
           >
             <div className="px-6 pb-4 flex flex-wrap gap-2">
               {members.map((member) => (
-                <motion.div 
+                <div 
                   key={member.id} 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 border border-neutral-200"
                 >
                   <div className="w-5 h-5 rounded-full overflow-hidden bg-neutral-200 relative">
@@ -456,12 +433,11 @@ function MembersPanel({ members }: { members: LoopFullData["members"] }) {
                   </div>
                   <span className="text-sm text-neutral-700">{member.display_name || member.username}</span>
                   {member.role === "owner" && <span className="text-xs" title="Owner">👑</span>}
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

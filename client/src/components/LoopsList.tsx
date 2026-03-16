@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 
 interface SidebarProject {
   id: string;
@@ -46,11 +45,9 @@ const LoopItem = memo(function LoopItem({
   const colors = colorClasses[badgeColor];
 
   return (
-    <motion.button
+    <button
       onClick={() => onSelect(project)}
       onMouseEnter={() => onHover?.(project)}
-      whileHover={{ x: 2 }}
-      whileTap={{ scale: 0.98 }}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left group ${
         isSelected
           ? colors.selected
@@ -82,7 +79,7 @@ const LoopItem = memo(function LoopItem({
           {badge}
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 });
 

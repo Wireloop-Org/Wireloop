@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   Message,
@@ -89,9 +88,7 @@ const MessageItem = memo(function MessageItem({
   const isPinned = msg.is_pinned ?? false;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div 
       className="group flex gap-3 hover:bg-neutral-100/50 p-2 -mx-2 rounded-lg transition-colors"
     >
       <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-neutral-200 ring-2 ring-neutral-100">
@@ -192,7 +189,7 @@ const MessageItem = memo(function MessageItem({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 
@@ -269,9 +266,8 @@ const ChannelItem = memo(function ChannelItem({
   onClick: () => void;
 }) {
   return (
-    <motion.button
+    <button
       onClick={onClick}
-      whileHover={{ x: 2 }}
       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
         isActive
           ? "bg-neutral-900 text-white"
@@ -280,7 +276,7 @@ const ChannelItem = memo(function ChannelItem({
     >
       <span className={isActive ? "text-neutral-400" : "text-neutral-400"}>#</span>
       <span className="truncate font-medium">{channel.name}</span>
-    </motion.button>
+    </button>
   );
 });
 
@@ -319,26 +315,20 @@ function ThreadPanel({
   };
 
   return (
-    <motion.div 
-      initial={{ x: 320, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 320, opacity: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+    <div 
       className="w-80 border-l border-neutral-200 bg-white flex flex-col h-full"
     >
       {/* Header */}
       <div className="shrink-0 px-4 py-3 border-b border-neutral-200 flex items-center justify-between bg-neutral-50">
         <h3 className="font-semibold text-sm text-neutral-900">Thread</h3>
-        <motion.button
+        <button
           onClick={onClose}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
           className="p-1 rounded hover:bg-neutral-200 transition-colors text-neutral-500 hover:text-neutral-900"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </motion.button>
+        </button>
       </div>
 
       {/* Parent message */}
@@ -398,18 +388,16 @@ function ThreadPanel({
             placeholder="Reply in thread..."
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-white border border-neutral-200 focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-100"
           />
-          <motion.button
+          <button
             onClick={handleSend}
             disabled={!replyInput.trim()}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             className="px-3 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
-          </motion.button>
+          </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -422,16 +410,10 @@ function DeleteModal({
   onCancel: () => void;
 }) {
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     >
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+      <div 
         className="bg-white border border-neutral-200 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
       >
         <h3 className="text-lg font-semibold mb-2 text-neutral-900">Delete Message</h3>
@@ -443,17 +425,15 @@ function DeleteModal({
           >
             Cancel
           </button>
-          <motion.button
+          <button
             onClick={onConfirm}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors font-medium"
           >
             Delete
-          </motion.button>
+          </button>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -492,16 +472,10 @@ function CreateChannelModal({
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     >
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+      <div 
         className="bg-white border border-neutral-200 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl"
       >
         <h3 className="text-lg font-semibold mb-4 text-neutral-900">Create Channel</h3>
@@ -528,18 +502,16 @@ function CreateChannelModal({
           >
             Cancel
           </button>
-          <motion.button
+          <button
             onClick={handleCreate}
             disabled={creating || !name.trim()}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             className="px-4 py-2 text-sm rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {creating ? "Creating..." : "Create"}
-          </motion.button>
+          </button>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -1182,9 +1154,7 @@ export default function ChatWindow({
   if (!loopDetails.is_member) {
     return (
       <div className="flex flex-col h-full bg-neutral-50 items-center justify-center">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div 
           className="text-center p-8 max-w-md bg-white rounded-2xl border border-neutral-200 shadow-xl"
         >
           <div className="w-20 h-20 rounded-2xl bg-neutral-100 flex items-center justify-center mb-6 mx-auto">
@@ -1210,34 +1180,28 @@ export default function ChatWindow({
                   Could not verify eligibility. The repo may be private or inaccessible.
                 </p>
               </div>
-              <motion.button
+              <button
                 onClick={handleVerify}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="w-full py-3 rounded-xl bg-neutral-200 text-neutral-700 font-medium transition-colors hover:bg-neutral-300"
               >
                 Retry
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 onClick={handleJoin}
                 disabled={joining}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
               >
                 {joining ? "Joining..." : "Try Joining Anyway"}
-              </motion.button>
+              </button>
             </div>
           ) : !verification ? (
-            <motion.button
+            <button
               onClick={handleVerify}
               disabled={verifying}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 disabled:opacity-50"
             >
               {verifying ? "Checking..." : "Check Eligibility"}
-            </motion.button>
+            </button>
           ) : verification.is_member ? (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
@@ -1249,14 +1213,12 @@ export default function ChatWindow({
                 </div>
                 <p className="text-sm text-neutral-600">You have access to this loop.</p>
               </div>
-              <motion.button
+              <button
                 onClick={() => window.location.reload()}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium hover:bg-neutral-800"
               >
                 Open Chat
-              </motion.button>
+              </button>
             </div>
           ) : verification.can_join ? (
             <div className="space-y-4">
@@ -1269,15 +1231,13 @@ export default function ChatWindow({
                 </div>
                 <p className="text-sm text-neutral-600">{verification.message}</p>
               </div>
-              <motion.button
+              <button
                 onClick={handleJoin}
                 disabled={joining}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="w-full py-3 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 disabled:opacity-50"
               >
                 {joining ? "Joining..." : "Join Loop"}
-              </motion.button>
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1313,7 +1273,7 @@ export default function ChatWindow({
               )}
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -1322,17 +1282,14 @@ export default function ChatWindow({
   return (
     <div className="flex h-full overflow-hidden bg-neutral-50">
       {/* Delete confirmation modal */}
-      <AnimatePresence>
         {deleteTarget && (
           <DeleteModal
             onConfirm={handleConfirmDelete}
             onCancel={() => setDeleteTarget(null)}
           />
         )}
-      </AnimatePresence>
 
       {/* Channel creation modal */}
-      <AnimatePresence>
         {showCreateChannel && (
           <CreateChannelModal
             projectId={loopDetails.id}
@@ -1340,32 +1297,24 @@ export default function ChatWindow({
             onCreated={handleChannelCreated}
           />
         )}
-      </AnimatePresence>
 
       {/* Channels sidebar */}
-      <AnimatePresence>
         {showChannelPanel && channelList.length > 0 && (
-          <motion.div 
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 224, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+          <div 
             className="shrink-0 border-r border-neutral-200 bg-white flex flex-col h-full overflow-hidden"
           >
             <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
               <h3 className="font-semibold text-sm text-neutral-900">Channels</h3>
               {isOwner && (
-                <motion.button
+                <button
                   onClick={() => setShowCreateChannel(true)}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
                   className="p-1 rounded hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-900"
                   title="Create channel"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                </motion.button>
+                </button>
               )}
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -1378,9 +1327,8 @@ export default function ChatWindow({
                 />
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-white">
@@ -1388,16 +1336,14 @@ export default function ChatWindow({
         <div className="shrink-0 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {channelList.length > 0 && (
-              <motion.button
+              <button
                 onClick={() => setShowChannelPanel(!showChannelPanel)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 className="p-1.5 rounded-lg hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-900"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
                 </svg>
-              </motion.button>
+              </button>
             )}
             <div>
               <h2 className="font-semibold text-neutral-900 flex items-center gap-2">
@@ -1415,10 +1361,8 @@ export default function ChatWindow({
           </div>
           <div className="flex items-center gap-3">
             {/* Pinned messages button */}
-            <motion.button
+            <button
               onClick={handleTogglePinnedPanel}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               className={`p-1.5 rounded-lg transition-colors ${
                 showPinnedPanel
                   ? "bg-amber-100 text-amber-700"
@@ -1429,15 +1373,13 @@ export default function ChatWindow({
               <svg className="w-5 h-5" fill={showPinnedPanel ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
               </svg>
-            </motion.button>
+            </button>
 
-            <motion.button
+            <button
               onClick={() => {
                 setShowGitHub(!showGitHub);
                 if (!showGitHub) setThreadParent(null);
               }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               className={`p-1.5 rounded-lg transition-colors ${
                 showGitHub
                   ? "bg-neutral-900 text-white"
@@ -1448,7 +1390,7 @@ export default function ChatWindow({
               <svg className="w-5 h-5" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
               </svg>
-            </motion.button>
+            </button>
             <div className="flex items-center gap-2" title={connected ? "Connected" : "Reconnecting"}>
               <span className={`w-2 h-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
             </div>
@@ -1465,9 +1407,7 @@ export default function ChatWindow({
               <MessageSkeleton />
             </>
           ) : messages.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div 
               className="h-full flex flex-col items-center justify-center text-center py-12"
             >
               <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
@@ -1479,7 +1419,7 @@ export default function ChatWindow({
                 {currentChannel ? `Welcome to #${currentChannel.name}` : "Start the conversation"}
               </h3>
               <p className="text-sm text-neutral-500">Be the first to send a message!</p>
-            </motion.div>
+            </div>
           ) : (
             messages.map((msg) => (
               <MessageItem
@@ -1499,12 +1439,8 @@ export default function ChatWindow({
         {/* Input area */}
         <div className="shrink-0 px-4 py-4 border-t border-neutral-200 bg-neutral-50">
           {/* @Mention autocomplete dropdown */}
-          <AnimatePresence>
             {mentionQuery !== null && mentionResults.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
+              <div
                 className="mb-2 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto"
               >
                 {mentionResults.map((member, i) => (
@@ -1537,9 +1473,8 @@ export default function ChatWindow({
                     )}
                   </button>
                 ))}
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
 
           <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
@@ -1552,29 +1487,22 @@ export default function ChatWindow({
                 rows={1}
               />
             </div>
-            <motion.button
+            <button
               onClick={handleSend}
               disabled={!message.trim() || !connected}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               className="shrink-0 w-12 h-12 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
-            </motion.button>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Pinned messages panel */}
-      <AnimatePresence>
         {showPinnedPanel && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 340, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          <div
             className="border-l border-neutral-200 bg-white flex flex-col overflow-hidden"
           >
             <div className="shrink-0 p-4 border-b border-neutral-200 flex items-center justify-between">
@@ -1646,12 +1574,10 @@ export default function ChatWindow({
                 ))
               )}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
       {/* Thread panel */}
-      <AnimatePresence>
         {threadParent && !showGitHub && (
           <ThreadPanel
             parentMessage={threadParent}
@@ -1667,10 +1593,8 @@ export default function ChatWindow({
             onDeleteReply={handleDeleteClick}
           />
         )}
-      </AnimatePresence>
 
       {/* GitHub Context panel */}
-      <AnimatePresence>
         {showGitHub && (
           <GitHubPanel
             loopName={loopDetails.name}
@@ -1678,7 +1602,6 @@ export default function ChatWindow({
             onClose={() => setShowGitHub(false)}
           />
         )}
-      </AnimatePresence>
     </div>
   );
 }

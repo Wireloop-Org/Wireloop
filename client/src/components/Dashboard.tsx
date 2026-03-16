@@ -6,7 +6,6 @@ import Image from "next/image";
 import { clearToken, api, Notification } from "@/lib/api";
 import { useAuthStore, useLoopsStore } from "@/store";
 import CreateLoopModal from "@/components/CreateLoopModal";
-import { motion, AnimatePresence } from "framer-motion";
 
 // ============================================================================
 // NOTIFICATION BELL — polls unread count every 30s, dropdown with notifications
@@ -76,16 +75,11 @@ function NotificationBell() {
         )}
       </button>
 
-      <AnimatePresence>
         {open && (
           <>
             {/* Backdrop */}
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
+            <div
               className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-white rounded-xl border border-neutral-200 shadow-xl z-50 overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
@@ -140,27 +134,13 @@ function NotificationBell() {
                   ))
                 )}
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
     </div>
   );
 }
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04, delayChildren: 0.05 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } }
-};
 
 // Icon component for StatCard
 const StatIcon = ({ type, className }: { type: string; className?: string }) => {
@@ -205,7 +185,7 @@ const LoopCard = memo(function LoopCard({
     onClick: () => void;
 }) {
     return (
-        <motion.button
+        <button
             onClick={onClick}
             className="p-5 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-all text-left group w-full"
         >
@@ -229,7 +209,7 @@ const LoopCard = memo(function LoopCard({
                     </svg>
                 </span>
             </div>
-        </motion.button>
+        </button>
     );
 });
 
@@ -246,7 +226,7 @@ const StatCard = memo(function StatCard({
     gradient?: string;
 }) {
     return (
-        <motion.div 
+        <div 
             className={`relative p-6 rounded-2xl overflow-hidden ${gradient || 'bg-white border border-neutral-200'}`}
         >
             {gradient && (
@@ -261,7 +241,7 @@ const StatCard = memo(function StatCard({
                 </div>
                 <div className={`text-sm ${gradient ? 'text-white/80' : 'text-neutral-500'}`}>{label}</div>
             </div>
-        </motion.div>
+        </div>
     );
 });
 
@@ -317,21 +297,17 @@ export default function Dashboard() {
             {/* Header */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-neutral-200/50">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                    <div 
                         className="flex items-center gap-2"
                     >
                         <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
                             <div className="w-3 h-3 bg-white rounded-full" />
                         </div>
                         <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
-                    </motion.div>
+                    </div>
 
                     {/* User Menu */}
-                    <motion.div 
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
+                    <div 
                         className="flex items-center gap-3"
                     >
                         <NotificationBell />
@@ -362,29 +338,25 @@ export default function Dashboard() {
                         >
                             Sign out
                         </button>
-                    </motion.div>
+                    </div>
                 </div>
             </header>
 
             {/* Main content */}
             <main className="relative z-10 max-w-6xl mx-auto px-6 py-12">
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                >
+                <div>
                     {/* Hero greeting */}
-                    <motion.div variants={itemVariants} className="mb-10">
+                    <div className="mb-10">
                         <h1 className="text-4xl font-bold text-neutral-900 tracking-tight mb-2">
                             Welcome back, {displayName}
                         </h1>
                         <p className="text-neutral-500 text-lg">
                             Manage your loops and collaborate with contributors
                         </p>
-                    </motion.div>
+                    </div>
 
                     {/* Stats cards */}
-                    <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
                         <StatCard
                             icon="owned"
                             value={isLoading ? "–" : ownedLoops.length}
@@ -401,10 +373,10 @@ export default function Dashboard() {
                             value={isLoading ? "–" : ownedLoops.length + filteredJoinedLoops.length}
                             label="Total Loops"
                         />
-                    </motion.div>
+                    </div>
 
                     {/* Quick Actions */}
-                    <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
                         <div 
                             className="p-6 rounded-2xl bg-white border border-neutral-200 hover:border-neutral-300 hover:shadow-lg transition-all"
                         >
@@ -451,11 +423,11 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Joined Loops */}
                     {(isLoading || filteredJoinedLoops.length > 0) && (
-                        <motion.div variants={itemVariants} className="mb-10">
+                        <div className="mb-12">
                             <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
                                 <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -479,11 +451,11 @@ export default function Dashboard() {
                                     ))}
                                 </div>
                             )}
-                        </motion.div>
+                        </div>
                     )}
 
                     {/* Your Loops */}
-                    <motion.div variants={itemVariants} className="mb-10">
+                    <div>
                         <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
                             <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -530,8 +502,8 @@ export default function Dashboard() {
                                 </button>
                             </div>
                         )}
-                    </motion.div>
-                </motion.div>
+                    </div>
+                </div>
             </main>
 
             {/* Create Loop Modal */}

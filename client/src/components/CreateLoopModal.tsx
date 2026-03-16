@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import { api, GitHubRepo, Rule } from "@/lib/api";
 
 interface CreateLoopModalProps {
@@ -131,33 +130,23 @@ export default function CreateLoopModal({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        <div
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={handleClose}
         />
 
         {/* Modal */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.2 }}
+        <div 
           className="relative w-full max-w-2xl max-h-[85vh] bg-white border border-neutral-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 bg-neutral-50">
             <div className="flex items-center gap-3">
               {step === "set-rules" && (
-                <motion.button
+                <button
                   onClick={handleBack}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
                   className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
                 >
                   <svg
@@ -173,16 +162,14 @@ export default function CreateLoopModal({
                       d="M15 19l-7-7 7-7"
                     />
                   </svg>
-                </motion.button>
+                </button>
               )}
               <h2 className="text-xl font-semibold text-neutral-900">
                 {step === "select-repo" ? "Select Repository" : "Configure Loop"}
               </h2>
             </div>
-            <motion.button
+            <button
               onClick={handleClose}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
               className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <svg
@@ -198,17 +185,15 @@ export default function CreateLoopModal({
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-            </motion.button>
+            </button>
           </div>
 
           {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
+            <div 
               className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
             >
               {error}
-            </motion.div>
+            </div>
           )}
 
           {/* Content */}
@@ -240,11 +225,9 @@ export default function CreateLoopModal({
               ) : (
                 <div className="space-y-2">
                   {filteredRepos.map((repo) => (
-                    <motion.button
+                    <button
                       key={repo.id}
                       onClick={() => handleSelectRepo(repo)}
-                      whileHover={{ scale: 1.01, y: -2 }}
-                      whileTap={{ scale: 0.99 }}
                       className="w-full flex items-center gap-4 p-4 bg-white hover:bg-neutral-50 border border-neutral-200 hover:border-neutral-300 rounded-xl transition-all text-left group shadow-sm hover:shadow-md"
                     >
                       <div className="w-10 h-10 rounded-lg bg-neutral-100 overflow-hidden relative flex-shrink-0 border border-neutral-200">
@@ -306,7 +289,7 @@ export default function CreateLoopModal({
                           d="M9 5l7 7-7 7"
                         />
                       </svg>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               )}
@@ -315,9 +298,7 @@ export default function CreateLoopModal({
             <>
               {/* Selected Repo */}
               {selectedRepo && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                <div 
                   className="flex items-center gap-4 p-4 bg-neutral-50 border border-neutral-200 rounded-xl mb-6"
                 >
                   <div className="w-12 h-12 rounded-lg bg-neutral-100 overflow-hidden relative flex-shrink-0 border border-neutral-200">
@@ -335,7 +316,7 @@ export default function CreateLoopModal({
                       {selectedRepo.description || "No description"}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* Loop Name */}
@@ -358,22 +339,18 @@ export default function CreateLoopModal({
                   <label className="block text-sm font-medium text-neutral-600">
                     Access Rules
                   </label>
-                  <motion.button
+                  <button
                     onClick={handleAddRule}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     className="text-sm text-neutral-900 hover:text-neutral-700 transition-colors font-medium"
                   >
                     + Add Rule
-                  </motion.button>
+                  </button>
                 </div>
 
                 <div className="space-y-3">
                   {rules.map((rule, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
                       className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl"
                     >
                       <select
@@ -398,10 +375,8 @@ export default function CreateLoopModal({
                         className="w-20 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-neutral-900 text-center focus:outline-none focus:border-neutral-400 focus:ring-2 focus:ring-neutral-100 transition-colors"
                       />
                       {rules.length > 1 && (
-                        <motion.button
+                        <button
                           onClick={() => handleRemoveRule(index)}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
                           className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
                         >
                           <svg
@@ -417,9 +392,9 @@ export default function CreateLoopModal({
                               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                             />
                           </svg>
-                        </motion.button>
+                        </button>
                       )}
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
 
@@ -434,19 +409,15 @@ export default function CreateLoopModal({
         {/* Footer */}
         {step === "set-rules" && (
           <div className="px-6 py-4 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3">
-            <motion.button
+            <button
               onClick={handleClose}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="px-6 py-2.5 rounded-xl border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
             >
               Cancel
-            </motion.button>
-            <motion.button
+            </button>
+            <button
               onClick={handleCreate}
               disabled={creating || !loopName}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="px-6 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {creating ? (
@@ -457,12 +428,11 @@ export default function CreateLoopModal({
               ) : (
                 "Create Loop"
               )}
-            </motion.button>
+            </button>
           </div>
         )}
-        </motion.div>
+        </div>
       </div>
-    </AnimatePresence>
   );
 }
 

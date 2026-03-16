@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect, memo } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   api,
   GitHubIssueItem,
@@ -139,16 +138,14 @@ function PRReviewThread({
       {/* Header */}
       <div className="shrink-0 px-4 py-3 border-b border-neutral-200 bg-neutral-50">
         <div className="flex items-center gap-2">
-          <motion.button
+          <button
             onClick={onBack}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             className="p-1 rounded hover:bg-neutral-200 transition-colors text-neutral-500"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-          </motion.button>
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <svg className="w-4 h-4 text-neutral-400 shrink-0" viewBox="0 0 16 16" fill="currentColor">
@@ -158,17 +155,15 @@ function PRReviewThread({
             </div>
             <p className="text-[11px] text-neutral-500 truncate mt-0.5">{prTitle}</p>
           </div>
-          <motion.button
+          <button
             onClick={fetchComments}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             className="p-1.5 rounded hover:bg-neutral-200 transition-colors text-neutral-400 hover:text-neutral-600"
             title="Refresh comments"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-          </motion.button>
+          </button>
         </div>
       </div>
 
@@ -183,14 +178,12 @@ function PRReviewThread({
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-sm text-red-500 mb-3">{error}</p>
-            <motion.button
+            <button
               onClick={fetchComments}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800"
             >
               Retry
-            </motion.button>
+            </button>
           </div>
         ) : comments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -245,12 +238,8 @@ function PRReviewThread({
 
       {/* Reply input */}
       <div className="shrink-0 border-t border-neutral-200 p-3 bg-white">
-        <AnimatePresence>
           {replyTo && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
+            <div
               className="flex items-center gap-2 mb-2 text-xs text-neutral-500 overflow-hidden"
             >
               <span>Replying to <span className="font-semibold text-neutral-700">@{replyTo.username}</span></span>
@@ -262,9 +251,8 @@ function PRReviewThread({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
         <div className="flex gap-2">
           <textarea
             ref={inputRef}
@@ -275,11 +263,9 @@ function PRReviewThread({
             rows={2}
             className="flex-1 resize-none rounded-lg border border-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-300"
           />
-          <motion.button
+          <button
             onClick={handleSend}
             disabled={!replyText.trim() || sending}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
             className="self-end p-2 rounded-lg bg-neutral-900 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-800 transition-colors"
           >
             {sending ? (
@@ -289,7 +275,7 @@ function PRReviewThread({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             )}
-          </motion.button>
+          </button>
         </div>
         <p className="text-[10px] text-neutral-400 mt-1.5">
           Comments sync to GitHub in real time
@@ -310,9 +296,7 @@ function CommentBubble({
   const isReview = comment.type === "review";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className={`p-3 rounded-xl border transition-colors group ${
         isReview && comment.state
           ? "border-l-2 border-neutral-200 " +
@@ -375,7 +359,7 @@ function CommentBubble({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -411,12 +395,8 @@ function FileCommentGroup({
         <span className="text-xs font-mono text-neutral-700 truncate flex-1">{fileName}</span>
         <span className="text-[10px] text-neutral-400 shrink-0">{comments.length}</span>
       </button>
-      <AnimatePresence>
         {expanded && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
+          <div
             className="overflow-hidden"
           >
             <div className="divide-y divide-neutral-100">
@@ -458,9 +438,8 @@ function FileCommentGroup({
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -550,10 +529,7 @@ const SummaryCard = memo(function SummaryCard({
   onClose: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
+    <div
       className="mt-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm overflow-hidden"
     >
       <div className="flex items-center justify-between mb-2">
@@ -573,17 +549,15 @@ const SummaryCard = memo(function SummaryCard({
         {renderMarkdown(summary.summary)}
       </div>
       <div className="mt-3 flex items-center gap-2">
-        <motion.button
+        <button
           onClick={onShare}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
           </svg>
           Share to Chat
-        </motion.button>
+        </button>
         <a
           href={summary.url}
           target="_blank"
@@ -596,7 +570,7 @@ const SummaryCard = memo(function SummaryCard({
           View on GitHub
         </a>
       </div>
-    </motion.div>
+    </div>
   );
 });
 
@@ -668,9 +642,7 @@ function ItemCard({
   const timeAgo = getTimeAgo(updatedAt);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className="p-3 border border-neutral-200 rounded-xl hover:border-neutral-300 transition-colors bg-white"
     >
       <div className="flex items-start gap-2">
@@ -753,11 +725,9 @@ function ItemCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-2">
-            <motion.button
+            <button
               onClick={handleSummarize}
               disabled={summarizing}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:border-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {summarizing ? (
@@ -773,19 +743,17 @@ function ItemCard({
                   Summarize
                 </>
               )}
-            </motion.button>
+            </button>
             {type === "pr" && onViewComments && (
-              <motion.button
+              <button
                 onClick={() => onViewComments(number, title)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 hover:border-neutral-300 transition-all"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 Review
-              </motion.button>
+              </button>
             )}
           </div>
 
@@ -793,7 +761,6 @@ function ItemCard({
             <p className="text-xs text-red-500 mt-1.5">{error}</p>
           )}
 
-          <AnimatePresence>
             {summary && (
               <SummaryCard
                 summary={summary}
@@ -801,10 +768,9 @@ function ItemCard({
                 onClose={() => setSummary(null)}
               />
             )}
-          </AnimatePresence>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -924,11 +890,7 @@ export default function GitHubPanel({ loopName, onShareToChat, onClose }: GitHub
   // If a PR review is open, show the review thread instead
   if (reviewPR) {
     return (
-      <motion.div
-        initial={{ x: 380, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 380, opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      <div
         className="w-[380px] border-l border-neutral-200 bg-white flex flex-col h-full"
       >
         <PRReviewThread
@@ -937,16 +899,12 @@ export default function GitHubPanel({ loopName, onShareToChat, onClose }: GitHub
           prTitle={reviewPR.title}
           onBack={() => setReviewPR(null)}
         />
-      </motion.div>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ x: 380, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 380, opacity: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
+    <div
       className="w-[380px] border-l border-neutral-200 bg-white flex flex-col h-full"
     >
       {/* Header */}
@@ -958,16 +916,14 @@ export default function GitHubPanel({ loopName, onShareToChat, onClose }: GitHub
             </svg>
             <h3 className="font-semibold text-sm text-neutral-900">GitHub Context</h3>
           </div>
-          <motion.button
+          <button
             onClick={onClose}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             className="p-1 rounded hover:bg-neutral-200 transition-colors text-neutral-500 hover:text-neutral-900"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </motion.button>
+          </button>
         </div>
 
         {repoName && (
@@ -1040,14 +996,12 @@ export default function GitHubPanel({ loopName, onShareToChat, onClose }: GitHub
               </svg>
             </div>
             <p className="text-sm text-neutral-500 mb-3">{error}</p>
-            <motion.button
+            <button
               onClick={() => tab === "issues" ? fetchIssues(stateFilter) : fetchPRs(stateFilter)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800"
             >
               Retry
-            </motion.button>
+            </button>
           </div>
         ) : tab === "issues" ? (
           issues.length === 0 ? (
@@ -1115,6 +1069,6 @@ export default function GitHubPanel({ loopName, onShareToChat, onClose }: GitHub
           )
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
