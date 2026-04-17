@@ -7,11 +7,13 @@ import {
   api,
   getToken,
   clearToken,
+  invalidateInitCache,
   Profile,
   BrowseLoop,
   VerifyAccessResponse,
   LoopMembership,
 } from "@/lib/api";
+import { useLoopsStore } from "@/store/useLoopsStore";
 
 
 export default function BrowseLoopsPage() {
@@ -94,12 +96,24 @@ export default function BrowseLoopsPage() {
     setJoining(true);
     try {
       await api.joinLoop(selectedLoop.name);
+      // Bust init cache so the sidebar on the loop page includes this new membership.
+      invalidateInitCache();
+      // Prefetch the loop's full data + init in parallel so the chat page mounts instantly.
+      const prefetchLoop = useLoopsStore.getState().prefetchLoop;
+      prefetchLoop(selectedLoop.name);
+      void api.getInit();
       router.push(`/loops/${selectedLoop.name}`);
     } catch (err) {
       console.error("Failed to join:", err);
     } finally {
       setJoining(false);
     }
+  };
+
+  const handleOpenMemberLoop = (name: string) => {
+    // Warm the cache before navigating so chat mounts instantly.
+    useLoopsStore.getState().prefetchLoop(name);
+    router.push(`/loops/${name}`);
   };
 
   const handleLogout = () => {
@@ -483,8 +497,9 @@ export default function BrowseLoopsPage() {
                         {/* Action Button */}
                         {verification.is_member ? (
                           <button
-                            onClick={() =>
-                              router.push(`/loops/${selectedLoop.name}`)
+                            onClick={() => handleOpenMemberLoop(selectedLoop.name)}
+                            onMouseEnter={() =>
+                              useLoopsStore.getState().prefetchLoop(selectedLoop.name)
                             }
                             className="w-full py-3 rounded-xl bg-neutral-900 text-white font-medium transition-colors hover:bg-neutral-800 shadow-lg shadow-neutral-900/10"
                           >

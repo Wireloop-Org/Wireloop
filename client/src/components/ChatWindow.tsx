@@ -1300,15 +1300,17 @@ export default function ChatWindow({
 
       {/* Channels sidebar */}
         {showChannelPanel && channelList.length > 0 && (
-          <div 
-            className="shrink-0 border-r border-neutral-200 bg-white flex flex-col h-full overflow-hidden"
+          <div
+            className="w-56 shrink-0 border-r border-neutral-200 bg-neutral-50/60 flex flex-col h-full overflow-hidden"
           >
-            <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-neutral-900">Channels</h3>
+            <div className="shrink-0 px-4 h-[57px] border-b border-neutral-200 flex items-center justify-between">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                {loopDetails.name}
+              </h3>
               {isOwner && (
                 <button
                   onClick={() => setShowCreateChannel(true)}
-                  className="p-1 rounded hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-900"
+                  className="p-1 rounded hover:bg-neutral-200 transition-colors text-neutral-400 hover:text-neutral-900"
                   title="Create channel"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1317,7 +1319,10 @@ export default function ChatWindow({
                 </button>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+              <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                Channels
+              </div>
               {channelList.map((channel) => (
                 <ChannelItem
                   key={channel.id}

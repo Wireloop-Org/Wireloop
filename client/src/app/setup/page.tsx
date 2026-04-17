@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, getToken, Profile } from "@/lib/api";
+import { api, getToken, invalidateInitCache, Profile } from "@/lib/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ProfileSetup() {
   const router = useRouter();
@@ -59,6 +60,16 @@ export default function ProfileSetup() {
     setError(null);
   };
 
+  const finishSetup = async (displayNameOverride?: string) => {
+    const updated = await api.updateProfile({
+      display_name: displayNameOverride,
+    });
+    // Flush caches & auth store so home page sees profile_completed=true immediately.
+    invalidateInitCache();
+    useAuthStore.getState().setUser(updated);
+    router.replace("/");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -68,15 +79,21 @@ export default function ProfileSetup() {
       if (avatarFile) {
         await api.uploadAvatar(avatarFile);
       }
-
-      await api.updateProfile({
-        display_name: displayName || undefined,
-      });
-
-      router.push("/");
+      await finishSetup(displayName || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save profile");
-    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await finishSetup();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to continue");
       setSaving(false);
     }
   };
@@ -196,8 +213,9 @@ export default function ProfileSetup() {
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => router.push("/")}
-              className="flex-1 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors"
+              onClick={handleSkip}
+              disabled={saving}
+              className="flex-1 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Skip
             </button>

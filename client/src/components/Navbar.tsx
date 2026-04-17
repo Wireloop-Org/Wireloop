@@ -25,7 +25,9 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
-        scrolled ? "bg-white/90 backdrop-blur-md border-b border-zinc-100" : "bg-transparent"
+        scrolled
+          ? "bg-[#F7F5F2]/80 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.04)]"
+          : "bg-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 py-5">
@@ -54,7 +56,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center">
             <button
               onClick={handleLogin}
-              className="bg-zinc-950 text-white px-6 py-2.5 text-sm font-medium hover:bg-zinc-800 transition-colors flex items-center gap-2"
+              className="bg-neutral-900 text-white px-5 py-2.5 text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors flex items-center gap-2 shadow-[0_8px_20px_-10px_rgba(0,0,0,0.35)]"
             >
               Connect GitHub
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

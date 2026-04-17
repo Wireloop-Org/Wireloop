@@ -13,7 +13,47 @@ interface LoopsListProps {
   onSelectLoop: (project: SidebarProject) => void;
   onHoverLoop?: (project: SidebarProject) => void;
   selectedLoopName?: string;
+  collapsed?: boolean;
 }
+
+const CompactLoopItem = memo(function CompactLoopItem({
+  project,
+  isSelected,
+  onSelect,
+  onHover,
+  ringColor,
+}: {
+  project: SidebarProject;
+  isSelected: boolean;
+  onSelect: (project: SidebarProject) => void;
+  onHover?: (project: SidebarProject) => void;
+  ringColor: "accent" | "emerald";
+}) {
+  const ring =
+    ringColor === "accent"
+      ? isSelected
+        ? "ring-neutral-900"
+        : "hover:ring-neutral-300"
+      : isSelected
+        ? "ring-emerald-500"
+        : "hover:ring-emerald-300";
+  const bg = isSelected
+    ? ringColor === "accent"
+      ? "bg-neutral-900 text-white"
+      : "bg-emerald-500 text-white"
+    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
+
+  return (
+    <button
+      onClick={() => onSelect(project)}
+      onMouseEnter={() => onHover?.(project)}
+      title={project.name}
+      className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-sm font-semibold transition-all ring-1 ring-transparent ${ring} ${bg}`}
+    >
+      {project.name[0]?.toUpperCase() || "?"}
+    </button>
+  );
+});
 
 // Memoized individual loop item with cleaner design
 const LoopItem = memo(function LoopItem({
@@ -89,8 +129,10 @@ const LoopsList = memo(function LoopsList({
   onSelectLoop,
   onHoverLoop,
   selectedLoopName,
+  collapsed = false,
 }: LoopsListProps) {
   if (projects.length === 0) {
+    if (collapsed) return null;
     return (
       <div className="text-center py-8 text-neutral-500 text-sm">
         <p className="font-medium">No loops yet</p>
@@ -99,9 +141,38 @@ const LoopsList = memo(function LoopsList({
     );
   }
 
-  // Separate owned vs joined
   const ownedLoops = projects.filter(p => p.role === "owner");
   const joinedLoops = projects.filter(p => p.role !== "owner");
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col gap-2">
+        {ownedLoops.map(project => (
+          <CompactLoopItem
+            key={project.id}
+            project={project}
+            isSelected={selectedLoopName === project.name}
+            onSelect={onSelectLoop}
+            onHover={onHoverLoop}
+            ringColor="accent"
+          />
+        ))}
+        {ownedLoops.length > 0 && joinedLoops.length > 0 && (
+          <div className="mx-auto w-6 h-px bg-neutral-200 my-1" />
+        )}
+        {joinedLoops.map(project => (
+          <CompactLoopItem
+            key={project.id}
+            project={project}
+            isSelected={selectedLoopName === project.name}
+            onSelect={onSelectLoop}
+            onHover={onHoverLoop}
+            ringColor="emerald"
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

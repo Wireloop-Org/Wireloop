@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, InitData, LoopFullData, Channel } from '@/lib/api';
+import { api, invalidateInitCache, InitData, LoopFullData, Channel } from '@/lib/api';
 
 interface LoopProject {
     id: string;
@@ -145,8 +145,10 @@ export const useLoopsStore = create<LoopsState>((set, get) => ({
         set({ selectedLoop: null, activeChannel: null });
     },
 
-    // Invalidate and refetch
+    // Invalidate and refetch — clear both Zustand state *and* the api-layer cache
+    // so that the next getInit() call hits the network and reflects fresh loops.
     invalidate: () => {
+        invalidateInitCache();
         set({ ownedLoops: [], joinedLoops: [], isLoading: true, loopCache: new Map() });
         get().fetchLoops();
     },

@@ -42,6 +42,10 @@ export function invalidateLoopCache(loopName: string): void {
   cache.delete(LOOP_CACHE_PREFIX + loopName);
 }
 
+export function invalidateInitCache(): void {
+  cache.delete(INIT_CACHE_KEY);
+}
+
 // Prefetch cache - stores promises for in-flight requests
 const prefetchCache = new Map<string, Promise<unknown>>();
 

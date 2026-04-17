@@ -36,6 +36,24 @@ export default function LoopPage() {
     prefetchLoop,
   } = useLoopsStore();
 
+  // UI state: collapsible loops rail, persisted to localStorage
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("wireloop:sidebar-collapsed") === "1";
+  });
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "wireloop:sidebar-collapsed",
+          next ? "1" : "0"
+        );
+      }
+      return next;
+    });
+  }, []);
+
   // Core state
   const [initData, setInitData] = useState<InitData | null>(null);
   const [loopData, setLoopData] = useState<LoopFullData | null>(() => {
@@ -271,80 +289,137 @@ export default function LoopPage() {
 
   return (
     <div className="h-screen bg-neutral-50 flex overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-72 border-r border-neutral-200 bg-white flex flex-col h-full z-20">
-        {/* Logo */}
-        <div className="shrink-0 p-4 border-b border-neutral-200">
-          <button
-            onClick={() => router.push("/")}
-            className="flex items-center gap-2"
-          >
-            <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+      {/* Sidebar (collapsible) */}
+      <aside
+        className={`${sidebarCollapsed ? "w-16" : "w-72"} shrink-0 border-r border-neutral-200 bg-white flex flex-col h-full z-20 transition-[width] duration-200 ease-out`}
+      >
+        {/* Logo + collapse toggle */}
+        <div className="shrink-0 p-3 border-b border-neutral-200 flex items-center justify-between gap-2">
+          {!sidebarCollapsed && (
+            <button
+              onClick={() => router.push("/")}
+              className="flex items-center gap-2 px-1"
+              title="Home"
+            >
+              <div className="w-7 h-7 rounded bg-black flex items-center justify-center">
+                <div className="w-3 h-3 bg-white rounded-full" />
+              </div>
+              <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
+            </button>
+          )}
+          {sidebarCollapsed && (
+            <button
+              onClick={() => router.push("/")}
+              className="mx-auto w-8 h-8 rounded bg-black flex items-center justify-center"
+              title="Home"
+            >
               <div className="w-3 h-3 bg-white rounded-full" />
-            </div>
-            <span className="font-bold text-lg text-neutral-900 tracking-tight">Wireloop</span>
-          </button>
-        </div>
-
-        {/* Back to Dashboard */}
-        <div className="shrink-0 p-3 border-b border-neutral-200">
+            </button>
+          )}
           <button
-            onClick={() => router.push("/")}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors ${sidebarCollapsed ? "hidden" : ""}`}
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
             </svg>
-            Back to Dashboard
           </button>
         </div>
 
+        {/* Back to Dashboard (hidden when collapsed) */}
+        {!sidebarCollapsed && (
+          <div className="shrink-0 p-3 border-b border-neutral-200">
+            <button
+              onClick={() => router.push("/")}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Dashboard
+            </button>
+          </div>
+        )}
+
         {/* Loops List */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4">
+        <div className={`flex-1 min-h-0 overflow-y-auto ${sidebarCollapsed ? "px-2 py-3" : "px-3 py-4"}`}>
           <LoopsList
             projects={sidebarProjects}
             onSelectLoop={handleSelectLoop}
             onHoverLoop={handleLoopHover}
             selectedLoopName={loopData?.name}
+            collapsed={sidebarCollapsed}
           />
         </div>
 
+        {/* Expand button when collapsed */}
+        {sidebarCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="shrink-0 mx-2 mb-2 p-2 rounded-lg text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors flex items-center justify-center"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+
         {/* User */}
-        <div className="shrink-0 p-4 border-t border-neutral-200 bg-neutral-50/50">
+        <div className={`shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"} border-t border-neutral-200 bg-neutral-50/50`}>
           {profile ? (
-            <>
+            sidebarCollapsed ? (
               <button
                 onClick={() => router.push("/profile")}
-                className="w-full flex items-center gap-3 p-2 rounded-xl transition-colors group"
+                className="w-10 h-10 mx-auto rounded-full overflow-hidden bg-neutral-200 relative ring-2 ring-neutral-100 hover:ring-neutral-300 transition-all flex items-center justify-center text-sm text-neutral-500"
+                title={`@${profile.username}`}
               >
-                <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-200 relative ring-2 ring-neutral-100 group-hover:ring-neutral-200 transition-all">
-                  {avatarUrl ? (
-                    <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-neutral-500">
-                      {displayName[0]?.toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <div className="text-sm font-medium text-neutral-900 truncate">{displayName}</div>
-                  <div className="text-xs text-neutral-500 truncate">@{profile.username}</div>
-                </div>
+                {avatarUrl ? (
+                  <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
+                ) : (
+                  displayName[0]?.toUpperCase()
+                )}
               </button>
-              <button
-                onClick={handleLogout}
-                className="w-full mt-2 px-4 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors font-medium"
-              >
-                Sign out
-              </button>
-            </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push("/profile")}
+                  className="w-full flex items-center gap-3 p-2 rounded-xl transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-200 relative ring-2 ring-neutral-100 group-hover:ring-neutral-200 transition-all">
+                    {avatarUrl ? (
+                      <Image src={avatarUrl} alt={displayName} fill className="object-cover" unoptimized />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm text-neutral-500">
+                        {displayName[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-sm font-medium text-neutral-900 truncate">{displayName}</div>
+                    <div className="text-xs text-neutral-500 truncate">@{profile.username}</div>
+                  </div>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full mt-2 px-4 py-2 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors font-medium"
+                >
+                  Sign out
+                </button>
+              </>
+            )
           ) : (
-            <div className="flex items-center gap-3 p-2 animate-pulse">
-              <div className="w-9 h-9 rounded-full bg-neutral-200" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-24 bg-neutral-200 rounded" />
-                <div className="h-3 w-16 bg-neutral-200 rounded" />
-              </div>
+            <div className={`flex items-center gap-3 p-2 animate-pulse ${sidebarCollapsed ? "justify-center" : ""}`}>
+              <div className={`${sidebarCollapsed ? "w-9 h-9" : "w-9 h-9"} rounded-full bg-neutral-200`} />
+              {!sidebarCollapsed && (
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-24 bg-neutral-200 rounded" />
+                  <div className="h-3 w-16 bg-neutral-200 rounded" />
+                </div>
+              )}
             </div>
           )}
         </div>
